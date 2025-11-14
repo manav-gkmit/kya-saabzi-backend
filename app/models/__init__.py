@@ -1,6 +1,7 @@
-from .common import Base
+# Comes handy for future alembic migrations
+# from .common import Base
 
-from . import users, dishes, cooklogs
+# from . import users, dishes, cooklogs
 
 
-__all__ = ["Base", "users", "dishes", "cooklogs"]
+# __all__ = ["Base", "users", "dishes", "cooklogs"]

@@ -1,14 +1,10 @@
-from sqlalchemy import Column, TIMESTAMP, ForeignKey, text
+from sqlalchemy import Column, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
-from .common import Base
+from .common import BaseModel
 
 
-class CookLog(Base):
+class CookLog(BaseModel):
     __tablename__ = "cooklogs"
-
-    id = Column(
-        UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()")
-    )
 
     user_id = Column(
         UUID(as_uuid=True),
@@ -23,17 +19,3 @@ class CookLog(Base):
         nullable=False,
         index=True,
     )
-
-    created_at = Column(
-        TIMESTAMP(timezone=True),
-        nullable=False,
-        server_default=text("NOW()"),
-        index=True,
-    )
-    updated_at = Column(
-        TIMESTAMP(timezone=True),
-        nullable=False,
-        server_default=text("NOW()"),
-        server_onupdate=text("NOW()"),
-    )
-    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)

@@ -1,7 +1,7 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, UUID4
 from typing import Optional
 
-from models.common import Timestamp
+from app.models.common import Timestamp
 
 
 class DishBase(BaseModel):
@@ -13,7 +13,7 @@ class DishCreate(DishBase):
 
 
 class DishRead(DishBase):
-    id: int
+    id: UUID4
     created_at: Timestamp
     updated_at: Timestamp
     deleted_at: Optional[Timestamp]

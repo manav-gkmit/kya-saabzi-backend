@@ -1,5 +1,5 @@
 from typing import Optional, Annotated
-from models.common import PasswordStr, Timestamp, Email
+from app.models.common import PasswordStr, Timestamp, Email
 
 from pydantic import BaseModel, StringConstraints, UUID4
 
@@ -32,3 +32,7 @@ class UserRead(UserBase):
 
     class Config:
         orm_mode = True
+
+
+class UserInDB(UserBase):
+    hashed_password: str

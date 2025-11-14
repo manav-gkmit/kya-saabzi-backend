@@ -1,11 +1,11 @@
-from pydantic import BaseModel, UUID4, Field
+from pydantic import BaseModel, UUID4
 from typing import Optional
 
-from models.common import Timestamp
+from app.models.common import Timestamp
 
 
 class CookLogBase(BaseModel):
-    dish_id: int = Field(..., examples=[1])
+    dish_id: UUID4
 
 
 class CookLogCreate(CookLogBase):
