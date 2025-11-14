@@ -5,7 +5,8 @@ from app.models.common import Timestamp
 
 
 class DishBase(BaseModel):
-    name: str = Field(..., examples=["Palak Paneer, Aloo Gobi"])
+    name: str = Field(..., examples=["Palak Paneer"])
+    # Need to think of validation so people dont enter multiple dishes
 
 
 class DishCreate(DishBase):

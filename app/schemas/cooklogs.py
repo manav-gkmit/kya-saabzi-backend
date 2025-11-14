@@ -2,6 +2,7 @@ from pydantic import BaseModel, UUID4
 from typing import Optional
 
 from app.models.common import Timestamp
+from .dishes import DishBase
 
 
 class CookLogBase(BaseModel):
@@ -18,6 +19,7 @@ class CookLogRead(CookLogBase):
     created_at: Timestamp
     updated_at: Timestamp
     deleted_at: Optional[Timestamp] = None
+    dish: DishBase
 
     class Config:
         orm_mode = True

@@ -1,5 +1,6 @@
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 from .common import BaseModel
 
 
@@ -19,3 +20,4 @@ class CookLog(BaseModel):
         nullable=False,
         index=True,
     )
+    dish = relationship("Dish", back_populates="cooklogs")
