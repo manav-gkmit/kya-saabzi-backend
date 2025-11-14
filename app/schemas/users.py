@@ -5,7 +5,13 @@ from pydantic import BaseModel, StringConstraints, UUID4
 
 
 Username = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=3, max_length=50)
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=3,
+        max_length=50,
+        pattern=r"^[a-zA-Z0-9_.-]+$",
+    ),
 ]
 
 
