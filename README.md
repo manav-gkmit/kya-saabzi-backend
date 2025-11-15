@@ -22,8 +22,26 @@ pip3 install -r requirements.txt
 ---> 100%
 ```
 
+### Create PostgreSQL Database 
+```sql
+CREATE DATABASE mydb;
+
+\c mydb
+```
+and make sure you have privileges to create tables. Then create/configure `.env` file:
+
+```console
+DATABASE_URL=postgres://YourUserName:YourPassword@YourHostname:5432/mydb
+SECRET_KEY=yoursecretkey
+```
+
+### Run the alembic migrations
+```bash
+alembic upgrade head
+```
+
 ### Run the backend
 
 ```console
-fastapi run app.py --port 80
+uvicorn main:app --reload
 ```

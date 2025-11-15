@@ -18,6 +18,22 @@ async def create_dish(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """
+    Creates a new dish entry if it doesn't exist and logs a cook event for the user.
+
+    Args:
+        dish_data (DishCreate): The data for the dish to be created or logged.
+        user (User): The authenticated user object, obtained from dependency injection.
+        db (Session): The database session.
+
+    Returns:
+        DishRead: The created or existing dish object.
+
+    Raises:
+        HTTPException:
+            - 401 Unauthorized: If the user is not authenticated.
+            - 400 Bad Request: If the dish name contains invalid characters (e.g., commas).
+    """
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
