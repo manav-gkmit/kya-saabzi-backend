@@ -25,5 +25,5 @@ pip3 install -r requirements.txt
 ### Run the backend
 
 ```console
-fastapi run app.py --port 80
+uvicorn main:app --reload
 ```
