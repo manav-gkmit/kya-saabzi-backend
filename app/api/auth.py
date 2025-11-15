@@ -2,15 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 
-from app.auth.jwt import create_access_token
-from app.auth.security import verify_password, get_password_hash
+from app.utils.jwt import create_access_token
+from app.utils.security import verify_password, get_password_hash
 from app.schemas.auth import Token
-from app.schemas.users import UserCreate, UserRead
+from app.schemas.users import UserCreate, UserRead, UserLogin
 from app.models.users import User
 from app.database.db import get_db
 
 
-router = APIRouter(prefix="/routers", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserRead)
@@ -57,14 +57,14 @@ async def register_user(
 
 @router.post("/login", response_model=Token)
 async def login_for_access_token(
-    user_data: UserCreate,
+    user_data: UserLogin,
     db: Session = Depends(get_db),
 ):
     """
     Authenticates a user and returns an access token.
 
     Args:
-        user_data (UserCreate): The user's credentials (email and password).
+        user_data (UserLogin): The user's credentials (email and password).
         db (Session): The database session.
 
     Raises:
