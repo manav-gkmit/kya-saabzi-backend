@@ -1,4 +1,5 @@
 from fastapi import APIRouter, status, HTTPException, Depends
+from sqlalchemy import desc
 from sqlalchemy.orm import Session, joinedload
 from typing import List
 import uuid
@@ -38,6 +39,7 @@ async def get_my_logs(
         db.query(CookLog)
         .options(joinedload(CookLog.dish))
         .filter(CookLog.user_id == user_data.id)
+        .order_by(desc(CookLog.created_at))
         .limit(7)  # Limit to only last 7 logs
         .all()
     )
