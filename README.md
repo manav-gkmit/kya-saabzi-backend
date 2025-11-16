@@ -43,5 +43,5 @@ alembic upgrade head
 ### Run the backend
 
 ```console
-uvicorn main:app --reload
+uvicorn app.main:app --reload
 ```
