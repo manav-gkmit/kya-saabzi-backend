@@ -22,19 +22,23 @@ async def get_my_logs(
     Retrieve all cook logs for the currently authenticated user.
 
     Args:
-        user_data (User): The authenticated user object, obtained from dependency injection.
+        user_data (User): The authenticated user object, obtained from
+        dependency injection.
         db (Session): The database session.
 
     Returns:
-        List[CookLogRead]: A list of cook log entries, including associated dish information.
+        List[CookLogRead]: A list of cook log entries, including associated
+        dish information.
 
     Raises:
-        HTTPException: If the user is not authenticated (handled by get_current_user dependency).
+        HTTPException: If the user is not authenticated
+        (handled by get_current_user dependency).
     """
     logs = (
         db.query(CookLog)
         .options(joinedload(CookLog.dish))
         .filter(CookLog.user_id == user_data.id)
+        .limit(7)  # Limit to only last 7 logs
         .all()
     )
     return logs
@@ -50,17 +54,22 @@ async def get_user_cooklogs(
     Retrieve cook logs for a specific user, with authorization check.
 
     Args:
-        target_user_id (uuid.UUID): The UUID of the user whose logs are to be retrieved.
-        user_data (User): The authenticated user object, obtained from dependency injection.
+        target_user_id (uuid.UUID): The UUID of the user whose logs are
+            to be retrieved.
+        user_data (User): The authenticated user object, obtained from
+            dependency injection.
         db (Session): The database session.
 
     Returns:
-        List[CookLogRead]: A list of cook log entries for the target user, including associated dish information.
+        List[CookLogRead]: A list of cook log entries for the target user,
+            including associated dish information.
 
     Raises:
         HTTPException:
-            - 401 Unauthorized: If the user is not authenticated (handled by get_current_user dependency).
-            - 403 Forbidden: If the authenticated user attempts to view logs of another user.
+            - 401 Unauthorized: If the user is not authenticated (handled by
+                get_current_user dependency).
+            - 403 Forbidden: If the authenticated user attempts to view
+                logs of another user.
     """
     if user_data.id != target_user_id:  # type: ignore
         raise HTTPException(
@@ -71,6 +80,7 @@ async def get_user_cooklogs(
         db.query(CookLog)
         .options(joinedload(CookLog.dish))
         .filter(CookLog.user_id == target_user_id)
+        .limit(7)
         .all()
     )
     return logs
