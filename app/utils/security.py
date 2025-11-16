@@ -1,18 +1,6 @@
-import bcrypt
 from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-# Generate salt to add to password
-def generate_salt() -> str:
-    """
-    Generates a salt for password hashing.
-
-    Returns:
-        str: The generated salt.
-    """
-    return bcrypt.gensalt().decode()
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
