@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     DATABASE_URL: str
+    FRONTEND_URL: str
 
     CORS_ORIGINS: list = []
 
