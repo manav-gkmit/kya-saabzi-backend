@@ -1,0 +1,75 @@
+{
+  "info": {
+    "_postman_id": "91a8cc17-1ac2-4aa7-9658-5eed548f2630",
+    "name": "New Collection",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "49852663",
+    "_collection_link": "https://manav-7d5c1d41-9960171.postman.co/workspace/a8343e5d-cb14-49b1-8aa8-7375a7475af8/collection/49852663-91a8cc17-1ac2-4aa7-9658-5eed548f2630?action=share&source=collection_link&creator=49852663"
+  },
+  "item": [
+    {
+      "name": "Register",
+      "id": "d74ae051-966a-4f15-ada4-3b1802e2e638",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"manav@gmail.com\",\n  \"username\": \"manav\",\n  \"password\": \"helloworld\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "127.0.0.1:8000/auth/register",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "8000",
+          "path": [
+            "auth",
+            "register"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Login",
+      "id": "b4ff7d7b-613d-4ea4-9899-84672e938dce",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"manav@gmail.com\",\n  \"password\": \"helloworldt\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "127.0.0.1:8000/auth/login",
+          "host": [
+            "127",
+            "0",
+            "0",
+            "1"
+          ],
+          "port": "8000",
+          "path": [
+            "auth",
+            "login"
+          ]
+        }
+      },
+      "response": []
+    }
+  ]
+}

@@ -1,11 +1,17 @@
 from typing import Optional, Annotated
 from app.models.common import PasswordStr, Timestamp, Email
 
-from pydantic import BaseModel, StringConstraints, UUID4
+from pydantic import BaseModel, StringConstraints, UUID4, EmailStr
 
 
 Username = Annotated[
-    str, StringConstraints(strip_whitespace=True, min_length=3, max_length=50)
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=3,
+        max_length=50,
+        pattern=r"^[a-zA-Z0-9_.-]+$",
+    ),
 ]
 
 
@@ -36,3 +42,8 @@ class UserRead(UserBase):
 
 class UserInDB(UserBase):
     hashed_password: str
+
+
+class UserLogin(BaseModel):
+    email: EmailStr
+    password: PasswordStr

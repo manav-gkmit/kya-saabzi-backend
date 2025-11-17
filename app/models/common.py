@@ -1,6 +1,6 @@
 import uuid
 from typing import Annotated
-from datetime import datetime
+from datetime import datetime, timezone
 
 from pydantic import StringConstraints, EmailStr
 from sqlalchemy import Column, TIMESTAMP, text
@@ -31,6 +31,6 @@ class BaseModel(Base):
         TIMESTAMP(timezone=True),
         nullable=False,
         server_default=text("NOW()"),
-        onupdate=datetime.utcnow,
+        onupdate=datetime.now(timezone.utc),
     )
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)
