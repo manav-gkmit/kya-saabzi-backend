@@ -1,13 +1,13 @@
 from fastapi import FastAPI
-from app.api import auth, add_dish, get_logs
+from app.routers import auth, dish, cooklogs
 
 
 app = FastAPI()
 
 
 app.include_router(auth.router)
-app.include_router(add_dish.router)
-app.include_router(get_logs.router)
+app.include_router(dish.router)
+app.include_router(cooklogs.router)
 
 
 @app.get("/")
