@@ -7,6 +7,7 @@ from .dishes import DishBase
 
 class CookLogBase(BaseModel):
     dish_id: UUID4
+    note: Optional[str] = None
 
 
 class CookLogCreate(CookLogBase):
@@ -22,4 +23,4 @@ class CookLogRead(CookLogBase):
     dish: DishBase
 
     class Config:
-        orm_mode = True
+        from_attributes = True

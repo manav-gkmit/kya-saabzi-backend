@@ -37,7 +37,7 @@ class UserRead(UserBase):
     deleted_at: Optional[Timestamp]
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class UserInDB(UserBase):

@@ -10,7 +10,7 @@ class DishBase(BaseModel):
 
 
 class DishCreate(DishBase):
-    pass
+    note: Optional[str] = Field(None, examples=["Made it extra spicy"])
 
 
 class DishRead(DishBase):
@@ -20,4 +20,4 @@ class DishRead(DishBase):
     deleted_at: Optional[Timestamp]
 
     class Config:
-        orm_mode = True
+        from_attributes = True

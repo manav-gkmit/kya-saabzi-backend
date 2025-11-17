@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.api import auth, add_dish, get_logs, recommendation
+from app.routers import auth, cooklogs, dish, recommendation
 
 
 app = FastAPI()
@@ -17,8 +17,8 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
-app.include_router(add_dish.router)
-app.include_router(get_logs.router)
+app.include_router(dish.router)
+app.include_router(cooklogs.router)
 app.include_router(recommendation.router)
 
 
