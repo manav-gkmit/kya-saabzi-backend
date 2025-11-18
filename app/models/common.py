@@ -3,7 +3,7 @@ from typing import Annotated
 from datetime import datetime, timezone
 
 from pydantic import StringConstraints, EmailStr
-from sqlalchemy import Column, TIMESTAMP, func
+from sqlalchemy import Column, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 

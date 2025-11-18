@@ -1,18 +1,14 @@
 {
   "info": {
-    "_postman_id": "91a8cc17-1ac2-4aa7-9658-5eed548f2630",
-    "name": "New Collection",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "49852663",
-    "_collection_link": "https://manav-7d5c1d41-9960171.postman.co/workspace/a8343e5d-cb14-49b1-8aa8-7375a7475af8/collection/49852663-91a8cc17-1ac2-4aa7-9658-5eed548f2630?action=share&source=collection_link&creator=49852663"
+    "_postman_id": "c6907a8e-147c-4a2f-b084-fa8e7fde58c9",
+    "name": "Auth",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
     {
       "name": "Register",
-      "id": "d74ae051-966a-4f15-ada4-3b1802e2e638",
       "request": {
         "method": "POST",
-        "header": [],
         "body": {
           "mode": "raw",
           "raw": "{\n  \"email\": \"manav@gmail.com\",\n  \"username\": \"manav\",\n  \"password\": \"helloworld\"\n}",
@@ -36,15 +32,12 @@
             "register"
           ]
         }
-      },
-      "response": []
+      }
     },
     {
       "name": "Login",
-      "id": "b4ff7d7b-613d-4ea4-9899-84672e938dce",
       "request": {
         "method": "POST",
-        "header": [],
         "body": {
           "mode": "raw",
           "raw": "{\n  \"email\": \"manav@gmail.com\",\n  \"password\": \"helloworldt\"\n}",
@@ -69,7 +62,61 @@
           ]
         }
       },
-      "response": []
+      "response": [
+        {
+          "name": "Login without @-",
+          "originalRequest": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"manav@\",\n  \"password\": \"helloworldt\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "127.0.0.1:8000/auth/login",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "auth",
+                "login"
+              ]
+            }
+          },
+          "status": "Unprocessable Content",
+          "code": 422,
+          "_postman_previewlanguage": "json",
+          "_postman_previewtype": "html",
+          "header": [
+            {
+              "key": "date",
+              "value": "Tue, 18 Nov 2025 13:07:05 GMT"
+            },
+            {
+              "key": "server",
+              "value": "uvicorn"
+            },
+            {
+              "key": "content-length",
+              "value": "222"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json"
+            }
+          ],
+          "responseTime": "2025-11-18T13:07:14.873Z",
+          "body": "{\n    \"detail\": [\n        {\n            \"type\": \"value_error\",\n            \"loc\": [\n                \"body\",\n                \"email\"\n            ],\n            \"msg\": \"value is not a valid email address: There must be something after the @-sign.\",\n            \"input\": \"manav@\",\n            \"ctx\": {\n                \"reason\": \"There must be something after the @-sign.\"\n            }\n        }\n    ]\n}"
+        }
+      ]
     }
   ]
 }
