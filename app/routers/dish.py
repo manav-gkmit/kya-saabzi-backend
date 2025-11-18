@@ -42,7 +42,7 @@ async def create_dish(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
         )
-    
+
     dish_name = dish_data.name.lower()
     dish = db.query(Dish).filter(Dish.name == dish_name).first()
     if not dish:
@@ -60,6 +60,5 @@ async def create_dish(
     db.add(log)
     db.commit()
     db.refresh(log)
-    
-    dish.name = dish.name.capitalize()
+
     return dish

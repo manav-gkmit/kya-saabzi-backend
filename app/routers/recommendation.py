@@ -43,7 +43,7 @@ async def get_recommendation(
     Raises:
         HTTPException: If no recommendation is available.
     """
-    
+
     # User's last 5 dishes
     recent_dish_ids = (
         db.query(CookLog.dish_id)
@@ -57,7 +57,10 @@ async def get_recommendation(
     # Other's popular dishes in the last 7 days
     seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
     popular_dishes = (
-        db.query(CookLog.dish_id, func.count(CookLog.dish_id).label("popularity"))
+        db.query(
+            CookLog.dish_id,
+            func.count(CookLog.dish_id).label("popularity"),
+        )
         .filter(
             CookLog.user_id != user.id,
             CookLog.created_at >= seven_days_ago,
@@ -82,12 +85,12 @@ async def get_recommendation(
                     .all()
                 )
                 notes = [n[0] for n in notes]
-                
+
                 if len(notes) > 3:
                     selected_notes = random.sample(notes, 3)
                 else:
                     selected_notes = notes
-                
+
                 recommendations.append(
                     RecommendationRead(dish=dish, notes=selected_notes)
                 )
@@ -99,5 +102,5 @@ async def get_recommendation(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No dish recommendations available.",
         )
-        
+
     return recommendations

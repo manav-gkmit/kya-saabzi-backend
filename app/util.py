@@ -5,6 +5,7 @@ from jose import JWTError
 from app.utils.jwt import decode_access_token
 from app.database.db import get_db
 from app.models.users import User
+import uuid
 
 auth_scheme = HTTPBearer(auto_error=False)
 
@@ -48,7 +49,14 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
         )
-    user = db.query(User).filter(User.id == user_id).first()
+    try:
+        user_id_uuid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user ID format in token",
+        )
+    user = db.query(User).filter(User.id == user_id_uuid).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
