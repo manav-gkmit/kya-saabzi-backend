@@ -1,0 +1,302 @@
+{
+  "info": {
+    "_postman_id": "1d500752-b3a5-46cb-8cab-d489b9cadceb",
+    "name": "Dishes",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Post dish",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": [
+        {
+          "name": "Post dish",
+          "originalRequest": {
+            "method": "POST",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Palak Paneer\",\n  \"note\": \"Made it extra spicy\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "127.0.0.1:8000/dishes",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "dishes"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "_postman_previewtype": "html",
+          "header": [
+            {
+              "key": "date",
+              "value": "Tue, 18 Nov 2025 12:36:54 GMT"
+            },
+            {
+              "key": "server",
+              "value": "uvicorn"
+            },
+            {
+              "key": "content-length",
+              "value": "181"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json"
+            }
+          ],
+          "responseTime": "2025-11-18T12:37:49.492Z",
+          "body": "{\n    \"name\": \"palak paneer\",\n    \"id\": \"cdc3dd74-7035-4990-8e44-3fa2ec8d14a4\",\n    \"created_at\": \"2025-11-17T15:15:30.241767+05:30\",\n    \"updated_at\": \"2025-11-17T15:15:30.241767+05:30\",\n    \"deleted_at\": null\n}"
+        }
+      ]
+    },
+    {
+      "name": "Cooklogs",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": [
+        {
+          "name": "Get logs",
+          "originalRequest": {
+            "method": "GET",
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "127.0.0.1:8000/cooklogs",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "cooklogs"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "_postman_previewtype": "html",
+          "header": [
+            {
+              "key": "date",
+              "value": "Tue, 18 Nov 2025 12:39:34 GMT"
+            },
+            {
+              "key": "server",
+              "value": "uvicorn"
+            },
+            {
+              "key": "content-length",
+              "value": "2168"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json"
+            }
+          ],
+          "responseTime": "2025-11-18T12:39:42.427Z",
+          "body": "[\n    {\n        \"dish_id\": \"2d0e6cee-f0b0-4d5a-a3a2-52d160f0df6d\",\n        \"note\": \"Burned them\",\n        \"id\": \"dea3468c-f630-4f82-b01c-d9ee7c8a22e3\",\n        \"user_id\": \"c83d1971-98f5-407a-893b-b4c2c5255056\",\n        \"created_at\": \"2025-11-18T14:42:47.224038+05:30\",\n        \"updated_at\": \"2025-11-18T14:42:47.224139+05:30\",\n        \"deleted_at\": null,\n        \"dish\": {\n            \"name\": \"tawa roti\"\n        }\n    },\n    {\n        \"dish_id\": \"12adffe5-f75c-4f46-b376-e5bc7bea8ea6\",\n        \"note\": \"Made it extra spicy\",\n        \"id\": \"fc721f19-7763-441c-8adf-5ac2bc27bbe8\",\n        \"user_id\": \"c83d1971-98f5-407a-893b-b4c2c5255056\",\n        \"created_at\": \"2025-11-18T14:42:47.224038+05:30\",\n        \"updated_at\": \"2025-11-18T14:42:47.224139+05:30\",\n        \"deleted_at\": null,\n        \"dish\": {\n            \"name\": \"\"\n        }\n    },\n    {\n        \"dish_id\": \"cdc3dd74-7035-4990-8e44-3fa2ec8d14a4\",\n        \"note\": \"\",\n        \"id\": \"936afd2f-99ae-451e-9f66-fd1ae0e79e5b\",\n        \"user_id\": \"c83d1971-98f5-407a-893b-b4c2c5255056\",\n        \"created_at\": \"2025-11-18T14:42:47.224038+05:30\",\n        \"updated_at\": \"2025-11-18T14:42:47.224139+05:30\",\n        \"deleted_at\": null,\n        \"dish\": {\n            \"name\": \"palak paneer\"\n        }\n    },\n    {\n        \"dish_id\": \"9b6c4189-aebd-4f47-b29a-9dc17bfee219\",\n        \"note\": \"Too sweet and bitter\",\n        \"id\": \"5d44f342-c370-465a-8b79-a7684c4e8adf\",\n        \"user_id\": \"c83d1971-98f5-407a-893b-b4c2c5255056\",\n        \"created_at\": \"2025-11-18T14:42:47.224038+05:30\",\n        \"updated_at\": \"2025-11-18T14:42:47.224139+05:30\",\n        \"deleted_at\": null,\n        \"dish\": {\n            \"name\": \"faaluda\"\n        }\n    },\n    {\n        \"dish_id\": \"cdc3dd74-7035-4990-8e44-3fa2ec8d14a4\",\n        \"note\": \"Made it extra spicy\",\n        \"id\": \"078047ce-0b96-447f-ba8a-8f67991ddbb9\",\n        \"user_id\": \"c83d1971-98f5-407a-893b-b4c2c5255056\",\n        \"created_at\": \"2025-11-18T14:42:47.224038+05:30\",\n        \"updated_at\": \"2025-11-18T14:42:47.224139+05:30\",\n        \"deleted_at\": null,\n        \"dish\": {\n            \"name\": \"palak paneer\"\n        }\n    },\n    {\n        \"dish_id\": \"dfe1101b-d5da-4203-9e0a-45818fdcebfe\",\n        \"note\": \"\",\n        \"id\": \"39acacb6-b93f-4706-94bd-4ee1b1faf5bc\",\n        \"user_id\": \"c83d1971-98f5-407a-893b-b4c2c5255056\",\n        \"created_at\": \"2025-11-18T14:02:23.639825+05:30\",\n        \"updated_at\": \"2025-11-18T14:02:23.639903+05:30\",\n        \"deleted_at\": null,\n        \"dish\": {\n            \"name\": \"space chaat\"\n        }\n    },\n    {\n        \"dish_id\": \"58251af2-1868-4a8d-a02c-b58681b1140a\",\n        \"note\": \"Test note 8: tried variation 2\",\n        \"id\": \"c6b6f766-c162-4d85-892c-50a264699ca5\",\n        \"user_id\": \"c83d1971-98f5-407a-893b-b4c2c5255056\",\n        \"created_at\": \"2025-11-04T06:36:37.887395+05:30\",\n        \"updated_at\": \"2025-11-18T12:06:37.554793+05:30\",\n        \"deleted_at\": null,\n        \"dish\": {\n            \"name\": \"rasgulla\"\n        }\n    }\n]"
+        },
+        {
+          "name": "not auth",
+          "originalRequest": {
+            "method": "GET",
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "127.0.0.1:8000/cooklogs",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "cooklogs"
+              ]
+            }
+          },
+          "status": "Unauthorized",
+          "code": 401,
+          "_postman_previewlanguage": "json",
+          "_postman_previewtype": "html",
+          "header": [
+            {
+              "key": "date",
+              "value": "Tue, 18 Nov 2025 12:40:16 GMT"
+            },
+            {
+              "key": "server",
+              "value": "uvicorn"
+            },
+            {
+              "key": "content-length",
+              "value": "30"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json"
+            }
+          ],
+          "responseTime": "2025-11-18T12:40:19.409Z",
+          "body": "{\n    \"detail\": \"Not authenticated\"\n}"
+        },
+        {
+          "name": "logs after delete",
+          "originalRequest": {
+            "method": "GET",
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "127.0.0.1:8000/cooklogs",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "cooklogs"
+              ]
+            }
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "_postman_previewtype": "html",
+          "header": [
+            {
+              "key": "date",
+              "value": "Tue, 18 Nov 2025 12:51:44 GMT"
+            },
+            {
+              "key": "server",
+              "value": "uvicorn"
+            },
+            {
+              "key": "content-length",
+              "value": "1861"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json"
+            }
+          ],
+          "responseTime": "2025-11-18T12:51:55.255Z",
+          "body": "[\n    {\n        \"dish_id\": \"9b6c4189-aebd-4f47-b29a-9dc17bfee219\",\n        \"note\": \"Too sweet and bitter\",\n        \"id\": \"5d44f342-c370-465a-8b79-a7684c4e8adf\",\n        \"user_id\": \"c83d1971-98f5-407a-893b-b4c2c5255056\",\n        \"created_at\": \"2025-11-18T14:42:47.224038+05:30\",\n        \"updated_at\": \"2025-11-18T14:42:47.224139+05:30\",\n        \"deleted_at\": null,\n        \"dish\": {\n            \"name\": \"faaluda\"\n        }\n    },\n    {\n        \"dish_id\": \"cdc3dd74-7035-4990-8e44-3fa2ec8d14a4\",\n        \"note\": \"Made it extra spicy\",\n        \"id\": \"078047ce-0b96-447f-ba8a-8f67991ddbb9\",\n        \"user_id\": \"c83d1971-98f5-407a-893b-b4c2c5255056\",\n        \"created_at\": \"2025-11-18T14:42:47.224038+05:30\",\n        \"updated_at\": \"2025-11-18T14:42:47.224139+05:30\",\n        \"deleted_at\": null,\n        \"dish\": {\n            \"name\": \"palak paneer\"\n        }\n    },\n    {\n        \"dish_id\": \"12adffe5-f75c-4f46-b376-e5bc7bea8ea6\",\n        \"note\": \"Made it extra spicy\",\n        \"id\": \"fc721f19-7763-441c-8adf-5ac2bc27bbe8\",\n        \"user_id\": \"c83d1971-98f5-407a-893b-b4c2c5255056\",\n        \"created_at\": \"2025-11-18T14:42:47.224038+05:30\",\n        \"updated_at\": \"2025-11-18T14:42:47.224139+05:30\",\n        \"deleted_at\": null,\n        \"dish\": {\n            \"name\": \"\"\n        }\n    },\n    {\n        \"dish_id\": \"cdc3dd74-7035-4990-8e44-3fa2ec8d14a4\",\n        \"note\": \"\",\n        \"id\": \"936afd2f-99ae-451e-9f66-fd1ae0e79e5b\",\n        \"user_id\": \"c83d1971-98f5-407a-893b-b4c2c5255056\",\n        \"created_at\": \"2025-11-18T14:42:47.224038+05:30\",\n        \"updated_at\": \"2025-11-18T14:42:47.224139+05:30\",\n        \"deleted_at\": null,\n        \"dish\": {\n            \"name\": \"palak paneer\"\n        }\n    },\n    {\n        \"dish_id\": \"dfe1101b-d5da-4203-9e0a-45818fdcebfe\",\n        \"note\": \"\",\n        \"id\": \"39acacb6-b93f-4706-94bd-4ee1b1faf5bc\",\n        \"user_id\": \"c83d1971-98f5-407a-893b-b4c2c5255056\",\n        \"created_at\": \"2025-11-18T14:02:23.639825+05:30\",\n        \"updated_at\": \"2025-11-18T14:02:23.639903+05:30\",\n        \"deleted_at\": null,\n        \"dish\": {\n            \"name\": \"space chaat\"\n        }\n    },\n    {\n        \"dish_id\": \"58251af2-1868-4a8d-a02c-b58681b1140a\",\n        \"note\": \"Test note 8: tried variation 2\",\n        \"id\": \"c6b6f766-c162-4d85-892c-50a264699ca5\",\n        \"user_id\": \"c83d1971-98f5-407a-893b-b4c2c5255056\",\n        \"created_at\": \"2025-11-04T06:36:37.887395+05:30\",\n        \"updated_at\": \"2025-11-18T12:06:37.554793+05:30\",\n        \"deleted_at\": null,\n        \"dish\": {\n            \"name\": \"rasgulla\"\n        }\n    }\n]"
+        }
+      ]
+    },
+    {
+      "name": "Delete logs",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": ""
+        }
+      },
+      "response": [
+        {
+          "name": "Expiry token",
+          "originalRequest": {
+            "method": "GET",
+            "url": {
+              "raw": "127.0.0.1:8000/cooklogs/?cooklog_id=dea3468c-f630-4f82-b01c-d9ee7c8a22e3",
+              "host": [
+                "127",
+                "0",
+                "0",
+                "1"
+              ],
+              "port": "8000",
+              "path": [
+                "cooklogs",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "cooklog_id",
+                  "value": "dea3468c-f630-4f82-b01c-d9ee7c8a22e3",
+                  "type": "text",
+                  "uuid": "990c512e-063f-4157-bbb5-b6b48a0840e1"
+                }
+              ]
+            }
+          },
+          "status": "Unauthorized",
+          "code": 401,
+          "_postman_previewlanguage": "json",
+          "_postman_previewtype": "html",
+          "header": [
+            {
+              "key": "date",
+              "value": "Tue, 18 Nov 2025 12:42:10 GMT"
+            },
+            {
+              "key": "server",
+              "value": "uvicorn"
+            },
+            {
+              "key": "content-length",
+              "value": "37"
+            },
+            {
+              "key": "content-type",
+              "value": "application/json"
+            }
+          ],
+          "responseTime": "2025-11-18T12:42:16.084Z",
+          "body": "{\n    \"detail\": \"Invalid or expired token\"\n}"
+        }
+      ]
+    }
+  ]
+}

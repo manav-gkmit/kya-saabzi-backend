@@ -6,6 +6,7 @@ pydantic==2.8.2
 pydantic-settings==2.2.1
 psycopg[binary]==3.2.12
 psycopg2
+pytest
 passlib==1.7.4
 bcrypt==4.3.0
 python-jose==3.3.0

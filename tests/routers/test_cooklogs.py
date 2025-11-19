@@ -68,3 +68,7 @@ def test_delete_cooklog(client: TestClient, db_session: Session, test_user: User
     assert deleted_cooklog.deleted_at is not None
 
     del app.dependency_overrides[get_current_user]
+
+
+# test to try and get logs of other user
+# test to try and delete logs of other user

@@ -3,7 +3,7 @@ from typing import Annotated
 from datetime import datetime, timezone
 
 from pydantic import StringConstraints, EmailStr
-from sqlalchemy import Column, TIMESTAMP, text
+from sqlalchemy import Column, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 
@@ -13,7 +13,6 @@ Timestamp = datetime
 Email = EmailStr
 
 
-# Constrained password for create only
 PasswordStr = Annotated[str, StringConstraints(min_length=8, max_length=128)]
 
 

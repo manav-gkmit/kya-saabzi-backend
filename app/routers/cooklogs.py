@@ -35,7 +35,9 @@ async def get_cooklogs(
         db.query(CookLog)
         .options(joinedload(CookLog.dish))
         .filter(CookLog.user_id == user.id)
-        .limit(7)  # Limit to only last 7 logs
+        .filter(CookLog.deleted_at.is_(None))
+        .order_by(CookLog.created_at.desc())
+        .limit(7)
         .all()
     )
     return logs
@@ -63,18 +65,19 @@ def delete_cooklog(
     Returns:
         None: Responds with a 204 No Content status upon successful deletion.
     """
-    cooklog = db.query(CookLog).filter(
-        CookLog.id == cooklog_id,
-        CookLog.user_id == current_user.id,
-        CookLog.deleted_at.is_(None),
-    ).first()
-
-    if not cooklog:
+    cooklog = db.query(CookLog).filter(CookLog.id == cooklog_id).first()
+    
+    if not cooklog or cooklog.deleted_at is not None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cook log entry not found for this user.",
+            detail="Cook log entry not found.",
         )
-
+    
+    if cooklog.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to delete this cook log entry.",
+        )
     now = datetime.now(timezone.utc)
     cooklog.deleted_at = now
     db.commit()
