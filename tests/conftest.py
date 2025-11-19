@@ -50,6 +50,21 @@ def test_user(db_session):
     return user
 
 
+@pytest.fixture(scope="function")
+def other_user(db_session):
+    """
+    Fixture to create another test user in the database.
+    """
+
+    user = User(
+        email="other@example.com",
+        username="otheruser",
+        hashed_password=get_password_hash("password"),
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
 
 
 @pytest.fixture(scope="function")
