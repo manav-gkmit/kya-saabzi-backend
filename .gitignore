@@ -6,3 +6,4 @@ venv/
 .env
 .postman/
 .coverage
+postman
