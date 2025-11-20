@@ -13,7 +13,7 @@ from app.database.db import get_db
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=UserRead)
+@router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 async def register_user(
     user_data: UserCreate,
     db: Session = Depends(get_db),
@@ -34,12 +34,12 @@ async def register_user(
     """
     if db.query(User).filter(User.email == user_data.email).first():
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered.",
         )
     if db.query(User).filter(User.username == user_data.username).first():
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
+            status_code=status.HTTP_409_CONFLICT,
             detail="Username is already taken.",
         )
     user = User(
@@ -55,7 +55,7 @@ async def register_user(
     return user
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=Token, status_code=status.HTTP_200_OK)
 async def login_for_access_token(
     user_data: UserLogin,
     db: Session = Depends(get_db),

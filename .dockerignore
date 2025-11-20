@@ -1,0 +1,16 @@
+.git
+.gitignore
+.vscode
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+venv
+.env.example
+.DS_Store
+*.db
+alembic/versions/*.pyc
+**/__pycache__/
+postman
+.postman

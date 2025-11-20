@@ -1,16 +1,34 @@
-from pydantic import BaseModel, Field, UUID4
-from typing import Optional
+from pydantic import BaseModel, Field, UUID4, field_validator, StringConstraints
+from typing import Optional, Annotated
 
 from app.models.common import Timestamp
 
 
 class DishBase(BaseModel):
     name: str = Field(..., examples=["Palak Paneer"])
-    # Need to think of validation so people dont enter multiple dishes
+
+    @field_validator('name')
+    def check_dish(cls, v: str):
+        stripped_v = v.strip()
+        if not stripped_v:
+            raise ValueError("Dish name cannot be empty")
+        
+        if not all(c.isalpha() or c.isspace() for c in stripped_v):
+            raise ValueError("Dish can only contain alphabets and spaces")
+        
+        if '  ' in stripped_v:
+            raise ValueError(
+                "Dish name cannot contain multiple consecutive spaces"
+            )
+            
+        return stripped_v
 
 
 class DishCreate(DishBase):
-    note: Optional[str] = Field(None, examples=["Made it extra spicy"])
+    note: Annotated[
+            str, 
+            StringConstraints(min_length=3, max_length=255),
+        ] = Field(None, examples=["Made it extra spicy"])
 
 
 class DishRead(DishBase):
