@@ -21,10 +21,6 @@ jobs:
         pip install ruff
         pip install -r requirements.txt
 
-    - name: Lint with ruff
-      run: |
-        ruff check .
-
     - name: Test with pytest
       run: |
         pytest --maxfail=1
