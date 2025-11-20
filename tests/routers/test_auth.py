@@ -12,7 +12,7 @@ def test_register_user(client: TestClient, db_session: Session):
         "/auth/register",
         json={"username": "testuser", "email": "test@example.com", "password": "password"},
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
     assert data["username"] == "testuser"
     assert data["email"] == "test@example.com"
@@ -34,7 +34,7 @@ def test_register_user_existing_email(client: TestClient, db_session: Session):
         "/auth/register",
         json={"username": "newuser", "email": "test@example.com", "password": "password"},
     )
-    assert response.status_code == 400
+    assert response.status_code == 409
 
 
 def test_register_user_existing_username(client: TestClient, db_session: Session):
@@ -53,7 +53,7 @@ def test_register_user_existing_username(client: TestClient, db_session: Session
         "/auth/register",
         json={"username": "testuser", "email": "new@example.com", "password": "password"},
     )
-    assert response.status_code == 400
+    assert response.status_code == 409
 
 
 def test_login_for_access_token(client: TestClient, db_session: Session):

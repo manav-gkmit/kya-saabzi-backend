@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field, UUID4, field_validator
-from typing import Optional
+from pydantic import BaseModel, Field, UUID4, field_validator, StringConstraints
+from typing import Optional, Annotated
 
 from app.models.common import Timestamp
 
@@ -25,7 +25,10 @@ class DishBase(BaseModel):
 
 
 class DishCreate(DishBase):
-    note: Optional[str] = Field(None, examples=["Made it extra spicy"])
+    note: Annotated[
+            str, 
+            StringConstraints(min_length=3, max_length=255),
+        ] = Field(None, examples=["Made it extra spicy"])
 
 
 class DishRead(DishBase):

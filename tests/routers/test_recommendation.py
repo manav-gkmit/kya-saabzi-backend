@@ -23,15 +23,15 @@ def test_get_recommendation(client: TestClient, db_session: Session, test_user: 
     db_session.add_all([other_user_1, other_user_2])
     db_session.commit()
 
-    dish1 = Dish(name="dish1")
-    dish2 = Dish(name="dish2")
-    dish3 = Dish(name="dish3")
-    dish4 = Dish(name="dish4")
-    dish5 = Dish(name="dish5")
-    dish6 = Dish(name="dish6")
-    dish7 = Dish(name="dish7")
-    dish8 = Dish(name="dish8")
-    dish9 = Dish(name="dish9")
+    dish1 = Dish(name="dishA")
+    dish2 = Dish(name="dishB")
+    dish3 = Dish(name="dishC")
+    dish4 = Dish(name="dishD")
+    dish5 = Dish(name="dishE")
+    dish6 = Dish(name="dishF")
+    dish7 = Dish(name="dishG")
+    dish8 = Dish(name="dishH")
+    dish9 = Dish(name="dishI")
     db_session.add_all([dish1, dish2, dish3, dish4, dish5, dish6, dish7, dish8, dish9])
     db_session.commit()
 
@@ -55,7 +55,7 @@ def test_get_recommendation(client: TestClient, db_session: Session, test_user: 
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 3
-    assert data[0]["dish"]["name"] == "dish6"
+    assert data[0]["dish"]["name"] == "dishF"
     assert len(data[0]["notes"]) == 3
 
     del app.dependency_overrides[get_current_user]
@@ -71,7 +71,7 @@ def test_get_recommendation_no_recommendations(client: TestClient, db_session: S
 
     app.dependency_overrides[get_current_user] = override_get_current_user
 
-    dish1 = Dish(name="dish1")
+    dish1 = Dish(name="dishA")
     db_session.add(dish1)
     db_session.commit()
 
