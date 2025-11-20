@@ -5,7 +5,7 @@ SQLAlchemy==2.0.44
 pydantic==2.8.2
 pydantic-settings==2.2.1
 psycopg[binary]==3.2.12
-psycopg2
+psycopg2-binary
 pytest
 passlib==1.7.4
 bcrypt==4.3.0
