@@ -13,9 +13,8 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 20
 
     DATABASE_URL: str
-    FRONTEND_URL: str
 
-    CORS_ORIGINS: list = []
+    CORS_ORIGINS: list
 
     class Config:
         env_file = ".env"
