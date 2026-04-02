@@ -22,6 +22,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: PasswordStr
+    household_name: Optional[str] = None # If provided, creates a new household
 
 
 class UserUpdate(BaseModel):
@@ -30,8 +31,11 @@ class UserUpdate(BaseModel):
     password: Optional[PasswordStr]
 
 
-class UserRead(UserBase):
+class UserRead(BaseModel):
     id: UUID4
+    email: Email
+    username: Username
+    household_id: Optional[UUID4] = None
     created_at: Timestamp
     updated_at: Timestamp
     deleted_at: Optional[Timestamp]
