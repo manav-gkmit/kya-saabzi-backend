@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, String, Integer
+from sqlalchemy import Column, ForeignKey, String, Integer, CheckConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .common import BaseModel
@@ -6,6 +6,7 @@ from .common import BaseModel
 
 class CookLog(BaseModel):
     __tablename__ = "cooklogs"
+    __table_args__ = (CheckConstraint("rating >= 1 AND rating <= 5", name="check_rating_range"),)
 
     household_id = Column(
         UUID(as_uuid=True),

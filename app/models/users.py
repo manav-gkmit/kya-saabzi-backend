@@ -14,8 +14,8 @@ class User(BaseModel):
     # Connect to a multi-tenant household
     household_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("households.id", ondelete="SET NULL"),
-        nullable=True,
+        ForeignKey("households.id", ondelete="CASCADE"),
+        nullable=False,
         index=True,
     )
     household = relationship("Household", back_populates="users")

@@ -13,7 +13,7 @@ auth_scheme = HTTPBearer(auto_error=False)
 def get_current_user(
     creds: HTTPAuthorizationCredentials = Depends(auth_scheme),
     db: Session = Depends(get_db),
-) -> str:
+) -> User:
     """
     FastAPI dependency to get the current user from the database based on the
     provided JWT token.

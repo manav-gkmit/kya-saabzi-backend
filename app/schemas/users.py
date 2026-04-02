@@ -29,7 +29,6 @@ class UserUpdate(BaseModel):
     email: Optional[Email]
     username: Optional[Username]
     password: Optional[PasswordStr]
-    household_id: Optional[UUID4] = None
 
 
 class UserRead(BaseModel):

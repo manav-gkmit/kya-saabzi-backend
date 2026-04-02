@@ -1,3 +1,4 @@
+import random
 from datetime import datetime, timedelta
 from .base import SessionLocal, new_uuid
 from app.models.users import User
@@ -25,9 +26,11 @@ def seed_cooklogs():
                 CookLog(
                     id=new_uuid(),
                     user_id=user.id,
+                    household_id=user.household_id,
                     dish_id=dish.id,
                     created_at=now - timedelta(days=i * 2),
                     note=f"Test note {i+1}: tried variation {i%3 + 1}",
+                    rating=random.randint(1, 5) if i % 2 == 0 else None
                 )
             )
 

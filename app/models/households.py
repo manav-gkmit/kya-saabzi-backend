@@ -11,7 +11,7 @@ class Household(BaseModel):
     preferences = Column(
         JSONB,
         nullable=True,
-        default={
+        default=lambda: {
             "is_vegetarian": False,
             "spice_level": "medium",
             "avoid_ingredients": [],

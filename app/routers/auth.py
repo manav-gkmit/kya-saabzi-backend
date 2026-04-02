@@ -1,5 +1,6 @@
 import hashlib
 import logging
+from typing import NoReturn
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -20,6 +21,11 @@ logger = logging.getLogger(__name__)
 
 def _fingerprint_identifier(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()[:12]
+
+
+def throw_conflict(detail: str, fingerprint: str) -> NoReturn:
+    logger.warning("Registration blocked: %s for identifier=%s", detail, fingerprint)
+    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
 
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
@@ -62,9 +68,6 @@ async def register_user(
     return user
 
 
-def throw_conflict(detail: str, fingerprint: str):
-    logger.warning("Registration blocked: %s for identifier=%s", detail, fingerprint)
-    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
 
 
 @router.post("/login", response_model=Token, status_code=status.HTTP_200_OK)

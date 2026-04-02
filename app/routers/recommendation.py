@@ -1,5 +1,6 @@
 import logging
 import random
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import List
 
@@ -31,10 +32,11 @@ def get_current_meal_type() -> str:
 
 
 class HybridRecoEngine:
-    def __init__(self, db: Session, household_id: str):
+    def __init__(self, db: Session, household_id: uuid.UUID):
         self.db = db
         self.household_id = household_id
-        self.household = db.query(Household).get(household_id)
+        # SQLAlchemy 2.0+ pattern
+        self.household = db.get(Household, household_id)
 
     def get_top_3(self) -> List[RecommendationRead]:
         # 1. Fetch Candidates (Hard Filters)
@@ -43,7 +45,8 @@ class HybridRecoEngine:
         query = self.db.query(Dish).filter(Dish.meal_type == meal_type)
         
         if self.household and self.household.preferences.get("is_vegetarian"):
-            query = query.filter(Dish.dish_type == "veg")
+            # Include both veg and vegan options
+            query = query.filter(Dish.dish_type.in_(["veg", "vegan"]))
 
         candidates = query.all()
 
@@ -63,27 +66,33 @@ class HybridRecoEngine:
         available_candidates = [c for c in candidates if c.id not in recent_dish_ids]
 
         if not available_candidates:
-            # Fallback: if totally empty, relax the meal_type constraint
-            available_candidates = self.db.query(Dish).all()
-            available_candidates = [c for c in available_candidates if c.id not in recent_dish_ids]
+            # Fallback: if totally empty, relax the meal_type constraint but KEEP dietary constraint
+            query = self.db.query(Dish)
+            if self.household and self.household.preferences.get("is_vegetarian"):
+                query = query.filter(Dish.dish_type.in_(["veg", "vegan"]))
+                
+            available_candidates = [c for c in query.all() if c.id not in recent_dish_ids]
 
         # 3. Scoring & Ranking
-        # Score = (Global Popularity * 0.2) + (Household History * 0.5) + (Randomness * 0.3)
         scored_dishes = []
         for dish in available_candidates:
-            score = self._calculate_score(dish)
-            scored_dishes.append((dish, score))
+            breakdown = self._calculate_score_breakdown(dish)
+            scored_dishes.append((dish, breakdown))
 
-        # Sort by score descending
-        scored_dishes.sort(key=lambda x: x[1], reverse=True)
-        top_3_dishes = [d[0] for d in scored_dishes[:3]]
+        # Sort by total score descending
+        scored_dishes.sort(key=lambda x: x[1]["total"], reverse=True)
+        top_3_items = scored_dishes[:3]
 
-        # 4. Construct Results with Notes
+        # 4. Construct Results with Notes & Breakdown
         results = []
-        for dish in top_3_dishes:
+        for dish, breakdown in top_3_items:
             notes = (
                 self.db.query(CookLog.note)
-                .filter(CookLog.dish_id == dish.id, CookLog.note.isnot(None))
+                .filter(
+                    CookLog.dish_id == dish.id, 
+                    CookLog.note.isnot(None),
+                    CookLog.household_id == self.household_id
+                )
                 .order_by(desc(CookLog.created_at))
                 .limit(3)
                 .all()
@@ -91,42 +100,47 @@ class HybridRecoEngine:
             results.append(
                 RecommendationRead(
                     dish=dish, 
-                    notes=[n[0] for n in notes]
+                    notes=[n[0] for n in notes],
+                    score_breakdown=breakdown
                 )
             )
 
         return results
 
-    def _calculate_score(self, dish: Dish) -> float:
+    def _calculate_score_breakdown(self, dish: Dish) -> dict:
         # A. Global Popularity (0-10)
-        # Count all cooklogs for this dish in last 30 days
         thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
         global_count = (
             self.db.query(func.count(CookLog.id))
             .filter(CookLog.dish_id == dish.id, CookLog.created_at >= thirty_days_ago)
             .scalar() or 0
         )
-        pop_score = min(global_count, 10) # Caps at 10
+        pop_score = float(min(global_count, 10))
 
         # B. Household History (0-10)
-        # Average rating from this household
         avg_rating = (
             self.db.query(func.avg(CookLog.rating))
             .filter(CookLog.dish_id == dish.id, CookLog.household_id == self.household_id)
             .scalar() or 0.0
         )
-        hist_score = float(avg_rating) * 2 # Convert 1-5 to 1-10
+        hist_score = float(avg_rating) * 2 
 
         # C. Randomness (0-10)
         rand_score = random.uniform(0, 10)
 
         total_score = (pop_score * 0.2) + (hist_score * 0.5) + (rand_score * 0.3)
-        return total_score
+        
+        return {
+            "popularity": round(pop_score, 2),
+            "history": round(hist_score, 2),
+            "randomness": round(rand_score, 2),
+            "total": round(total_score, 2)
+        }
 
 
 @router.get("/", response_model=List[RecommendationRead])
 async def get_recommendation(
-    household_id: str = Depends(get_current_household),
+    household_id: uuid.UUID = Depends(get_current_household),
     db: Session = Depends(get_db),
 ):
     """
