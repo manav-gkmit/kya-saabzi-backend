@@ -98,9 +98,20 @@ def seed_dishes(db: Optional[Session] = None):
         ]
 
         for d_data in dishes_list:
+            ingredient_names = d_data.pop("ingredients")
             dish = db.query(Dish).filter(Dish.name == d_data["name"]).first()
-            if not dish:
-                ingredient_names = d_data.pop("ingredients")
+            
+            if dish:
+                # Update existing dish row metadata
+                for key, value in d_data.items():
+                    setattr(dish, key, value)
+                
+                # Reconcile its ingredients relationship
+                dish.ingredients = [] # Clear and re-append
+                for name in ingredient_names:
+                    dish.ingredients.append(db_ingredients[name])
+            else:
+                # Create new dish
                 dish = Dish(**d_data)
                 for name in ingredient_names:
                     dish.ingredients.append(db_ingredients[name])
