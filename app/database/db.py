@@ -1,9 +1,13 @@
+import logging
+
 from typing import Iterator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
 from app.config import settings
 
+
+logger = logging.getLogger(__name__)
 
 engine = create_engine(
     settings.DATABASE_URL,
@@ -28,7 +32,9 @@ def get_db() -> Iterator[Session]:
         Session: The database session.
     """
     db = SessionLocal()
+    logger.debug("Database session opened")
     try:
         yield db
     finally:
         db.close()
+        logger.debug("Database session closed")

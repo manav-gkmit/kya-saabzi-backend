@@ -1,5 +1,7 @@
+import logging
+
 from fastapi import APIRouter, Depends, status, HTTPException
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from typing import List
 from datetime import datetime, timedelta, timezone
@@ -13,6 +15,7 @@ from app.models.cooklogs import CookLog
 from app.schemas.recommendation import RecommendationRead
 
 router = APIRouter(prefix="/recommend", tags=["recommendation"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_model=List[RecommendationRead])
@@ -43,7 +46,7 @@ async def get_recommendation(
     Raises:
         HTTPException: If no recommendation is available.
     """
-
+    logger.info("Generating recommendations for user_id=%s", user.id)
     # User's last 5 dishes
     recent_dish_ids = (
         db.query(CookLog.dish_id)
@@ -53,6 +56,7 @@ async def get_recommendation(
         .all()
     )
     recent_dish_ids = [d[0] for d in recent_dish_ids]
+    logger.debug("Recent dish ids count=%s for user_id=%s", len(recent_dish_ids), user.id)
 
     # Other's popular dishes in the last 7 days
     seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
@@ -69,6 +73,7 @@ async def get_recommendation(
         .order_by(desc("popularity"))
         .all()
     )
+    logger.debug("Popular dish candidates count=%s for user_id=%s", len(popular_dishes), user.id)
 
     recommendations = []
     for dish_id, _ in popular_dishes:
@@ -94,13 +99,16 @@ async def get_recommendation(
                 recommendations.append(
                     RecommendationRead(dish=dish, notes=selected_notes)
                 )
+                logger.debug("Added recommendation dish_id=%s note_count=%s", dish_id, len(selected_notes))
             if len(recommendations) == 3:
                 break
 
     if not recommendations:
+        logger.warning("No recommendations available for user_id=%s", user.id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No dish recommendations available.",
         )
 
+    logger.info("Generated %s recommendations for user_id=%s", len(recommendations), user.id)
     return recommendations
