@@ -44,14 +44,25 @@ async def startup_event():
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     logger.info("Incoming request: %s %s", request.method, request.url.path)
-    response = await call_next(request)
-    logger.info(
-        "Completed request: %s %s -> %s",
-        request.method,
-        request.url.path,
-        response.status_code,
-    )
-    return response
+    response = None
+    try:
+        response = await call_next(request)
+        return response
+    except Exception as exc:
+        logger.exception(
+            "Request failed: %s %s -> %s",
+            request.method,
+            request.url.path,
+            exc,
+        )
+        raise
+    finally:
+        logger.info(
+            "Completed request: %s %s -> %s",
+            request.method,
+            request.url.path,
+            response.status_code if response is not None else "error",
+        )
 
 
 @app.get("/")

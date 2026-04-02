@@ -1,3 +1,4 @@
+import hashlib
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -14,6 +15,10 @@ from app.database.db import get_db
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
+
+
+def _fingerprint_identifier(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:12]
 
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
@@ -35,15 +40,27 @@ async def register_user(
     Returns:
         Token: An object containing the access token and token type.
     """
-    logger.info("Registration attempt for email=%s username=%s", user_data.email, user_data.username)
+    identifier_fingerprint = _fingerprint_identifier(
+        f"{user_data.email.lower()}:{user_data.username.lower()}",
+    )
+    logger.info(
+        "Registration attempt for identifier=%s",
+        identifier_fingerprint,
+    )
     if db.query(User).filter(User.email == user_data.email).first():
-        logger.warning("Registration blocked: email already registered for email=%s", user_data.email)
+        logger.warning(
+            "Registration blocked: email/username conflict for identifier=%s",
+            identifier_fingerprint,
+        )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered.",
         )
     if db.query(User).filter(User.username == user_data.username).first():
-        logger.warning("Registration blocked: username already taken for username=%s", user_data.username)
+        logger.warning(
+            "Registration blocked: email/username conflict for identifier=%s",
+            identifier_fingerprint,
+        )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Username is already taken.",
@@ -58,7 +75,7 @@ async def register_user(
     db.add(user)
     db.commit()
     db.refresh(user)
-    logger.info("User registered successfully user_id=%s username=%s", user.id, user.username)
+    logger.info("User registered successfully user_id=%s", user.id)
     return user
 
 
@@ -80,17 +97,18 @@ async def login_for_access_token(
     Returns:
         Token: An object containing the access token and token type.
     """
-    logger.info("Login attempt for email=%s", user_data.email)
+    email_fingerprint = _fingerprint_identifier(user_data.email.lower())
+    logger.info("Login attempt for identifier=%s", email_fingerprint)
     user = db.query(User).filter(User.email == user_data.email).first()
     if not user or not verify_password(
         user_data.password,
         user.hashed_password,  # type: ignore
     ):
-        logger.warning("Login failed for email=%s", user_data.email)
+        logger.warning("Login failed for identifier=%s", email_fingerprint)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials provided.",
         )
     access_token = create_access_token(subject=str(user.id))
-    logger.info("Login successful user_id=%s email=%s", user.id, user.email)
+    logger.info("Login successful user_id=%s", user.id)
     return {"access_token": access_token, "token_type": "bearer"}
