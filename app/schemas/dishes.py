@@ -33,6 +33,11 @@ class DishCreate(DishBase):
 
 class DishRead(DishBase):
     id: UUID4
+    dish_type: str
+    meal_type: str
+    spiciness: int
+    prep_time_minutes: Optional[int] = None
+    calories_estimate: Optional[int] = None
     created_at: Timestamp
     updated_at: Timestamp
     deleted_at: Optional[Timestamp]

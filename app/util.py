@@ -62,3 +62,16 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
         )
     return user
+
+
+def get_current_household(user: User = Depends(get_current_user)) -> uuid.UUID:
+    """
+    Dependency to ensure the user belongs to a household.
+    Returns the household_id.
+    """
+    if not user.household_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User does not belong to a household.",
+        )
+    return user.household_id

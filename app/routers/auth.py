@@ -9,6 +9,7 @@ from app.utils.jwt import create_access_token
 from app.utils.security import verify_password, get_password_hash
 from app.schemas.auth import Token
 from app.schemas.users import UserCreate, UserRead, UserLogin
+from app.models.households import Household
 from app.models.users import User
 from app.database.db import get_db
 
@@ -27,56 +28,43 @@ async def register_user(
     db: Session = Depends(get_db),
 ):
     """
-    Registers a user and returns the entry in the database.
-
-    Args:
-        user_data (UserCreate): The user's credentials (email and password).
-        db (Session): The database session.
-
-    Raises:
-        HTTPException: If matching entries for either email or username are
-            found.
-
-    Returns:
-        Token: An object containing the access token and token type.
+    Registers a user and creates a new household for them.
+    In a professional B2B setting, they would then invite family members.
     """
     identifier_fingerprint = _fingerprint_identifier(
         f"{user_data.email.lower()}:{user_data.username.lower()}",
     )
-    logger.info(
-        "Registration attempt for identifier=%s",
-        identifier_fingerprint,
-    )
+    
+    # Validation
     if db.query(User).filter(User.email == user_data.email).first():
-        logger.warning(
-            "Registration blocked: email/username conflict for identifier=%s",
-            identifier_fingerprint,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered.",
-        )
+        throw_conflict("Email already registered.", identifier_fingerprint)
     if db.query(User).filter(User.username == user_data.username).first():
-        logger.warning(
-            "Registration blocked: email/username conflict for identifier=%s",
-            identifier_fingerprint,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Username is already taken.",
-        )
+        throw_conflict("Username is already taken.", identifier_fingerprint)
+
+    # 1. Create a Household first
+    household_name = user_data.household_name or f"{user_data.username}'s Home"
+    household = Household(name=household_name)
+    db.add(household)
+    db.flush() # Get the household ID without committing yet
+
+    # 2. Create User and link to household
     user = User(
         username=user_data.username,
         email=user_data.email,
-        hashed_password=get_password_hash(
-            user_data.password,
-        ),
+        hashed_password=get_password_hash(user_data.password),
+        household_id=household.id
     )
     db.add(user)
     db.commit()
     db.refresh(user)
-    logger.info("User registered successfully user_id=%s", user.id)
+    
+    logger.info("User registered and Household created user_id=%s household_id=%s", user.id, household.id)
     return user
+
+
+def throw_conflict(detail: str, fingerprint: str):
+    logger.warning("Registration blocked: %s for identifier=%s", detail, fingerprint)
+    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
 
 
 @router.post("/login", response_model=Token, status_code=status.HTTP_200_OK)
