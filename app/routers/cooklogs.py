@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 from typing import List
@@ -12,6 +14,7 @@ from app.models.cooklogs import CookLog
 
 
 router = APIRouter(prefix="/cooklogs", tags=["cooklogs"])
+logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_model=List[CookLogRead])
@@ -31,6 +34,7 @@ async def get_cooklogs(
         List[CookLogRead]: A list of cook logs for the user, limited to the
             last 7 entries.
     """
+    logger.info("Fetching cook logs for user_id=%s", user.id)
     logs = (
         db.query(CookLog)
         .options(joinedload(CookLog.dish))
@@ -40,6 +44,7 @@ async def get_cooklogs(
         .limit(7)
         .all()
     )
+    logger.info("Fetched %s cook logs for user_id=%s", len(logs), user.id)
     return logs
 
 
@@ -68,12 +73,19 @@ def delete_cooklog(
     cooklog = db.query(CookLog).filter(CookLog.id == cooklog_id).first()
     
     if not cooklog or cooklog.deleted_at is not None:
+        logger.warning("Cook log delete failed: not found cooklog_id=%s user_id=%s", cooklog_id, current_user.id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cook log entry not found.",
         )
     
     if cooklog.user_id != current_user.id:
+        logger.warning(
+            "Cook log delete forbidden cooklog_id=%s owner_id=%s requester_id=%s",
+            cooklog_id,
+            cooklog.user_id,
+            current_user.id,
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to delete this cook log entry.",
@@ -81,4 +93,5 @@ def delete_cooklog(
     now = datetime.now(timezone.utc)
     cooklog.deleted_at = now
     db.commit()
+    logger.info("Cook log soft-deleted cooklog_id=%s user_id=%s", cooklog_id, current_user.id)
     return None

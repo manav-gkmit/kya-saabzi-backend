@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, status, HTTPException
 from sqlalchemy.orm import Session
 
@@ -10,6 +12,7 @@ from app.models.cooklogs import CookLog
 
 
 router = APIRouter(prefix="/dishes", tags=["dishes"])
+logger = logging.getLogger(__name__)
 
 
 @router.post("/", response_model=DishRead)
@@ -38,20 +41,25 @@ async def create_dish(
                 characters (e.g., commas).
     """
     if not user:
+        logger.warning("Dish creation attempted without authenticated user")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
         )
 
     dish_name = dish_data.name.lower()
+    logger.info("Dish create/log request user_id=%s dish_name=%s", user.id, dish_name)
     dish = db.query(Dish).filter(Dish.name == dish_name).first()
     if not dish:
+        logger.info("Creating new dish dish_name=%s", dish_name)
         dish = Dish(
             name=dish_name,
         )
         db.add(dish)
         db.commit()
         db.refresh(dish)
+    else:
+        logger.debug("Using existing dish dish_id=%s dish_name=%s", dish.id, dish.name)
     log = CookLog(
         user_id=user.id,
         dish_id=dish.id,
@@ -60,5 +68,6 @@ async def create_dish(
     db.add(log)
     db.commit()
     db.refresh(log)
+    logger.info("Cook log created log_id=%s user_id=%s dish_id=%s", log.id, user.id, dish.id)
 
     return dish
