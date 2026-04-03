@@ -1,47 +1,133 @@
-# Kya Saabzi Backend
+# 🍲 Kya Saabzi? (Backend)
 
-**Kya Saabzi** is a simple dish recommendation app that aims to solve your everyday problem of *"Aaj kya banau?"*  
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![SQLAlchemy 2.0](https://img.shields.io/badge/SQLAlchemy_2.0-D71F00?style=for-the-badge&logo=sqlalchemy&logoColor=white)](https://www.sqlalchemy.org/)
+[![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
+
+**Kya Saabzi** is a high-craft backend service designed to solve the age-old daily household dilemma: *"Aaj kya banau?"* (What should I cook today?). It provides an intelligent, multi-tenant recommendation engine that respects household history, dietary preferences, and variety.
 
 ---
 
-## Installation
+## ✨ Core Features
 
-### Clone the repository for yourself
-```console
-git clone https://github.com/manav-gkmit/kya-saabzi-backend.git  
+-   **🏠 Multi-tenant Households**: Users can create or join households, share kitchen history, and manage collective preferences.
+-   **🍱 Intelligent Recommendation Engine**: 
+    -   **Meal-Aware**: Automatically suggests Breakfast, Lunch, Snack, or Dinner based on local time.
+    -   **Variety Safeguard**: Implements a 6-day cooldown to ensure your meals don't get repetitive.
+    -   **Dietary Smart**: Respects household vegetarian/vegan preferences at the core level.
+    -   **Hybrid Scoring**: Combines global popularity, your own history/ratings, and a touch of randomness.
+-   **📜 Kitchen History (Cook Logs)**: Track exactly what was cooked, when, and how well it was received with ratings and personal notes.
+-   **🔐 Enterprise-grade Auth**: Secure JWT-based authentication with password hashing (bcrypt) and role-based access.
+-   **🚀 Ready for Production**: Built-in Docker support, Alembic migrations, and comprehensive logging.
 
-cd kya-saabzi-backend
-```
+---
 
-### Initialize a virtual environment and install the dependencies
-```console
-python3 -m venv venv  
+## 🧠 The Recommendation Engine
 
-pip3 install -r requirements.txt
+The heart of "Kya Saabzi" is its **Hybrid Scoring Model**, which ensures quality results every time:
 
----> 100%
-```
+| Factor | Weight | Description |
+| :--- | :---: | :--- |
+| **Household History** | 50% | Prioritizes dishes your household loves and has rated highly in the past. |
+| **Weighted Randomness** | 30% | Ensures the "Discovery" factor so you don't get stuck in a loop. |
+| **Global Popularity** | 20% | Leverages community trends to suggest dishes that are currently popular. |
 
-### Create PostgreSQL Database 
-```sql
-CREATE DATABASE mydb;
+---
 
-\c mydb
-```
-and make sure you have privileges to create tables. Then create/configure `.env` file:
+## 🛠️ Tech Stack
 
-```console
-DATABASE_URL=postgres://YourUserName:YourPassword@YourHostname:5432/mydb
-SECRET_KEY=yoursecretkey
-```
+-   **Framework**: [FastAPI](https://fastapi.tiangolo.com/) (Async Python)
+-   **ORM**: [SQLAlchemy 2.0](https://www.sqlalchemy.org/)
+-   **Database**: [PostgreSQL](https://www.postgresql.org/)
+-   **Migrations**: [Alembic](https://alembic.sqlalchemy.org/)
+-   **Security**: [python-jose](https://python-jose.readthedocs.io/), [passlib](https://passlib.readthedocs.io/)
+-   **Validation**: [Pydantic v2](https://docs.pydantic.dev/)
 
-### Run the alembic migrations
+---
+
+## 🚀 Getting Started
+
+### 1. Prerequisites
+-   Python 3.10+
+-   PostgreSQL instance
+
+### 2. Installation
 ```bash
-alembic upgrade head
+# Clone the repository
+git clone https://github.com/manav-gkmit/kya-saabzi-backend.git
+cd kya-saabzi-backend
+
+# Initialize virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
-### Run the backend
+### 3. Configuration
+Create a `.env` file in the root directory (refer to `.env.example`):
+```env
+SECRET_KEY="your-super-secret-key"
+DATABASE_URL="postgres://user:password@localhost:5432/kyasaabzi"
+CORS_ORIGINS=["http://localhost:3000"]
+```
 
-```console
+### 4. Database Setup & Seeding
+```bash
+# Run migrations
+alembic upgrade head
+
+# (Optional) Seed initial data (dishes, users, sample logs)
+python -m app.seeders
+```
+
+### 5. Running the API
+```bash
 uvicorn app.main:app --reload
 ```
+The API will be available at: [http://localhost:8000](http://localhost:8000)  
+Interactive Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+---
+
+## 🐳 Docker Deployment
+
+To run the entire stack using Docker:
+```bash
+docker build -t kya-saabzi-backend .
+docker run -p 8000:8000 --env-file .env kya-saabzi-backend
+```
+
+---
+
+## 📂 Project Structure
+
+```text
+kya-saabzi-backend/
+├── app/
+│   ├── models/       # SQLAlchemy 2.0 Models
+│   ├── routers/      # API Endpoints (Auth, Dish, Recommendation...)
+│   ├── schemas/      # Pydantic v2 Validation Schemas
+│   ├── seeders/      # Database seeding scripts
+│   ├── database/     # DB Session & configuration
+│   └── util/         # Auth & common utilities
+├── alembic/          # Database migrations
+├── tests/            # Pytest test suite
+└── Dockerfile        # Containerization
+```
+
+---
+
+## 🤝 Contributing
+
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+*Created with ❤️ for home chefs everywhere.*
