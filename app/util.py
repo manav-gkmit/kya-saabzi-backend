@@ -75,3 +75,16 @@ def get_current_household(user: User = Depends(get_current_user)) -> uuid.UUID:
             detail="User does not belong to a household.",
         )
     return user.household_id
+
+
+def get_current_meal_type() -> str:
+    """Helper to determine breakfast/lunch/dinner based on current hour."""
+    from datetime import datetime
+    hour = datetime.now().hour
+    if 5 <= hour < 11:
+        return "breakfast"
+    if 11 <= hour < 16:
+        return "lunch"
+    if 16 <= hour < 19:
+        return "snack"
+    return "dinner"

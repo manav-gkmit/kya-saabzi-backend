@@ -1,6 +1,7 @@
-from .base import SessionLocal, pwd_context, new_uuid
+from .base import SessionLocal, new_uuid
 from app.models.users import User
 from app.models.households import Household
+from app.utils.security import get_password_hash
 
 
 def seed_users():
@@ -18,7 +19,7 @@ def seed_users():
                     id=new_uuid(),
                     username=f"user{i}",
                     email=f"user{i}@example.com",
-                    hashed_password=pwd_context.hash("password123"),
+                    hashed_password=get_password_hash("password123"),
                     household_id=household.id
                 )
             )
