@@ -69,10 +69,8 @@ pip install -r requirements.txt
 ### 3. Configuration
 Create a `.env` file in the root directory (refer to `.env.example`):
 ```env
-APP_NAME="Kya Saabzi App"
-DEBUG=True
 SECRET_KEY="your-super-secret-key"
-DATABASE_URL="postgresql://user:password@localhost:5432/kyasaabzi"
+DATABASE_URL="postgres://user:password@localhost:5432/kyasaabzi"
 CORS_ORIGINS=["http://localhost:3000"]
 ```
 
