@@ -18,4 +18,6 @@ class User(BaseModel):
         nullable=False,
         index=True,
     )
-    household = relationship("Household", back_populates="users")
+    household = relationship(
+        "Household", back_populates="users", foreign_keys="User.household_id"
+    )
