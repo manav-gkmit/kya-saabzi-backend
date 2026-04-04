@@ -2,7 +2,7 @@ import logging
 import difflib
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.util import get_current_user, get_current_meal_type
@@ -21,18 +21,27 @@ logger = logging.getLogger(__name__)
 async def search_dishes(
     q: str,
     db: Session = Depends(get_db),
-    limit: int = 5
+    limit: int = Query(default=5, ge=1, le=50),
 ):
     """
     Search for dishes by name using fuzzy matching.
     Helps prevent duplicate entries (e.g. 'palak paneer' vs 'palakpaner').
     """
     q = q.lower().strip()
-    # Fetch all dish names (optimized: just ID and name)
-    existing_dishes = db.query(Dish.id, Dish.name).all()
+    # Prefilter at DB level: only load dishes whose name contains the query string.
+    # This avoids loading the entire table into memory for the common case.
+    candidates = (
+        db.query(Dish.id, Dish.name)
+        .filter(Dish.name.ilike(f"%{q}%"))
+        .all()
+    )
+    # If no DB-level candidates are found, fall back to all dishes so that
+    # difflib can still catch near-miss typos (e.g. 'palakpaner').
+    if not candidates:
+        candidates = db.query(Dish.id, Dish.name).all()
     
     results = []
-    for dish_id, dish_name in existing_dishes:
+    for dish_id, dish_name in candidates:
         similarity = difflib.SequenceMatcher(None, q, dish_name).ratio()
         if similarity > 0.4: # Lower threshold for search, results will be sorted
             results.append({

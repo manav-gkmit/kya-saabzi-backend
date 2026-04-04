@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, UUID4, field_validator, StringConstraints
-from typing import Optional, Annotated
+from typing import Optional, Annotated, Literal
 
 from app.models.common import Timestamp
 
@@ -31,8 +31,8 @@ class DishCreate(DishBase):
         ]] = Field(None, examples=["Made it extra spicy"])
     rating: Optional[int] = Field(None, ge=1, le=5, examples=[4])
     spiciness: int = Field(1, ge=1, le=5, examples=[2])
-    meal_type: Optional[str] = Field(None, examples=["lunch"]) # 'breakfast', 'lunch', 'dinner', 'snack'
-    dish_type: str = Field("veg", examples=["veg"]) # 'veg', 'non-veg', 'vegan'
+    meal_type: Optional[Literal['breakfast', 'lunch', 'dinner', 'snack']] = Field(None, examples=["lunch"])
+    dish_type: Literal['veg', 'non-veg', 'vegan'] = Field("veg", examples=["veg"])
     prep_time_minutes: Optional[int] = Field(None, examples=[30])
     calories_estimate: Optional[int] = Field(None, examples=[350])
 
