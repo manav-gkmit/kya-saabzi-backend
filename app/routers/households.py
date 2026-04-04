@@ -76,7 +76,7 @@ async def join_household(
     db: Session = Depends(get_db),
 ):
     """Join an existing household using a short invite code."""
-    invite_code = join_data.invite_code.upper().strip()
+    invite_code = join_data.invite_code
     target_household = (
         db.query(Household).filter(Household.invite_code == invite_code).first()
     )

@@ -1,5 +1,5 @@
 from typing import Optional, Dict, Any, List
-from pydantic import BaseModel, UUID4, Field
+from pydantic import BaseModel, UUID4, Field, field_validator
 from app.models.common import Timestamp
 
 
@@ -29,4 +29,12 @@ class HouseholdRead(HouseholdBase):
 
 
 class HouseholdJoin(BaseModel):
-    invite_code: str = Field(..., min_length=6, max_length=10)
+    invite_code: str = Field(..., min_length=6, max_length=10, pattern=r"^[A-Z0-9]+$")
+
+    @field_validator("invite_code", mode="before")
+    @classmethod
+    def normalize_invite_code(cls, v: str) -> str:
+        """Strip whitespace and uppercase the invite code before validation."""
+        if isinstance(v, str):
+            return v.strip().upper()
+        return v
