@@ -29,8 +29,14 @@ def upgrade() -> None:
 
     # Step 2: Backfill unique invite codes for every existing row.
     connection = op.get_bind()
-    households = connection.execute(sa.text("SELECT id FROM households")).fetchall()
-    used_codes: set = set()
+    households = connection.execute(
+        sa.text("SELECT id FROM households WHERE invite_code IS NULL")
+    ).fetchall()
+    # Seed used_codes with any codes already in the DB (e.g. from a partial run).
+    existing = connection.execute(
+        sa.text("SELECT invite_code FROM households WHERE invite_code IS NOT NULL")
+    ).fetchall()
+    used_codes: set = {row[0] for row in existing}
     for (household_id,) in households:
         while True:
             code = "".join(
