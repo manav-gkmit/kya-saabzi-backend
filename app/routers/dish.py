@@ -28,11 +28,13 @@ async def search_dishes(
     Helps prevent duplicate entries (e.g. 'palak paneer' vs 'palakpaner').
     """
     q = q.lower().strip()
+    # Escape SQL LIKE wildcards in user input to avoid unintended pattern expansion.
+    q_escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     # Prefilter at DB level: only load dishes whose name contains the query string.
     # This avoids loading the entire table into memory for the common case.
     candidates = (
         db.query(Dish.id, Dish.name)
-        .filter(Dish.name.ilike(f"%{q}%"))
+        .filter(Dish.name.ilike(f"%{q_escaped}%", escape="\\"))
         .all()
     )
     # If no DB-level candidates are found, fall back to all dishes so that
