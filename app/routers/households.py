@@ -51,7 +51,8 @@ async def update_my_household(
     if update_data.preferences:
         # Merge new preferences into existing ones
         current_prefs = household.preferences or {}
-        new_prefs = {**current_prefs, **update_data.preferences}
+        new_prefs_dict = update_data.preferences.dict(exclude_unset=True)
+        new_prefs = {**current_prefs, **new_prefs_dict}
         household.preferences = new_prefs
 
     db.commit()
