@@ -32,6 +32,8 @@ class Household(BaseModel):
             "spice_level": "medium",
             "avoid_ingredients": [],
             "preferred_cuisines": [],
+            "recommendation_window_days": 6,
+            "include_recently_cooked": False,
         },
     )
 

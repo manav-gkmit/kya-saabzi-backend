@@ -1,7 +1,7 @@
 """add_household_invite_and_admin
 
 Revision ID: 881948f17938
-Revises: 50cc28359ac9
+Revises: 8f6c4ade40b3
 Create Date: 2026-04-03 12:27:55.938722
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '881948f17938'
-down_revision: Union[str, Sequence[str], None] = '50cc28359ac9'
+down_revision: Union[str, Sequence[str], None] = '8f6c4ade40b3'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

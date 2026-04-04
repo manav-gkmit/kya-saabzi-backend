@@ -32,24 +32,35 @@ class HybridRecoEngine:
         meal_type = get_current_meal_type()
         query = self.db.query(Dish).filter(Dish.meal_type == meal_type)
         
-        if self.household and self.household.preferences.get("is_vegetarian"):
+        if self.household and (self.household.preferences or {}).get("is_vegetarian"):
             # Include both veg and vegan options
             query = query.filter(Dish.dish_type.in_(["veg", "vegan"]))
 
         candidates = query.all()
 
-        # 2. Apply Variety Filter (5-7 day cooldown)
-        # We'll use 6 days as the threshold
-        cooldown_threshold = datetime.now(timezone.utc) - timedelta(days=6)
-        recent_dish_ids = (
-            self.db.query(CookLog.dish_id)
-            .filter(
-                CookLog.household_id == self.household_id,
-                CookLog.created_at >= cooldown_threshold
+        # 2. Apply Variety Filter (User-defined cooldown window)
+        # Defaults to 6 days
+        prefs = (self.household.preferences or {}) if self.household else {}
+        include_recent = prefs.get("include_recently_cooked", False)
+        window_raw = prefs.get("recommendation_window_days", 6)
+        # Normalize and guard window value
+        try:
+            window = max(0, int(window_raw))
+        except (ValueError, TypeError):
+            window = 6
+
+        recent_dish_ids = set()
+        if not include_recent:
+            cooldown_threshold = datetime.now(timezone.utc) - timedelta(days=window)
+            results = (
+                self.db.query(CookLog.dish_id)
+                .filter(
+                    CookLog.household_id == self.household_id,
+                    CookLog.created_at >= cooldown_threshold
+                )
+                .all()
             )
-            .all()
-        )
-        recent_dish_ids = {r[0] for r in recent_dish_ids}
+            recent_dish_ids = {r[0] for r in results}
 
         available_candidates = [c for c in candidates if c.id not in recent_dish_ids]
 
@@ -58,7 +69,7 @@ class HybridRecoEngine:
             query = self.db.query(Dish)
             if self.household and self.household.preferences.get("is_vegetarian"):
                 query = query.filter(Dish.dish_type.in_(["veg", "vegan"]))
-                
+
             available_candidates = [c for c in query.all() if c.id not in recent_dish_ids]
 
         # 3. Scoring & Ranking
