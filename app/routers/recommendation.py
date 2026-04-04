@@ -32,7 +32,7 @@ class HybridRecoEngine:
         meal_type = get_current_meal_type()
         query = self.db.query(Dish).filter(Dish.meal_type == meal_type)
         
-        if self.household and self.household.preferences.get("is_vegetarian"):
+        if self.household and (self.household.preferences or {}).get("is_vegetarian"):
             # Include both veg and vegan options
             query = query.filter(Dish.dish_type.in_(["veg", "vegan"]))
 
@@ -40,9 +40,14 @@ class HybridRecoEngine:
 
         # 2. Apply Variety Filter (User-defined cooldown window)
         # Defaults to 6 days
-        prefs = self.household.preferences if self.household else {}
+        prefs = (self.household.preferences or {}) if self.household else {}
         include_recent = prefs.get("include_recently_cooked", False)
-        window = prefs.get("recommendation_window_days", 6)
+        window_raw = prefs.get("recommendation_window_days", 6)
+        # Normalize and guard window value
+        try:
+            window = max(0, int(window_raw))
+        except (ValueError, TypeError):
+            window = 6
 
         recent_dish_ids = set()
         if not include_recent:

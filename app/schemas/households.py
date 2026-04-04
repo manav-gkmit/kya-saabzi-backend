@@ -8,7 +8,7 @@ class HouseholdPreferences(BaseModel):
     spice_level: str = "medium"
     avoid_ingredients: List[str] = []
     preferred_cuisines: List[str] = []
-    recommendation_window_days: int = 6
+    recommendation_window_days: int = Field(6, ge=0)
     include_recently_cooked: bool = False
 
 
