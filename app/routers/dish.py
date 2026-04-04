@@ -11,6 +11,7 @@ from app.schemas.dishes import DishCreate, DishRead, DishSearchResponse
 from app.models.users import User
 from app.models.dishes import Dish
 from app.models.cooklogs import CookLog
+from app.utils.db import escape_like
 
 
 router = APIRouter(prefix="/dishes", tags=["dishes"])
@@ -28,10 +29,9 @@ async def search_dishes(
     Helps prevent duplicate entries (e.g. 'palak paneer' vs 'palakpaner').
     """
     q = q.lower().strip()
-    # Escape SQL LIKE wildcards in user input to avoid unintended pattern expansion.
-    q_escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     # Prefilter at DB level: only load dishes whose name contains the query string.
     # This avoids loading the entire table into memory for the common case.
+    q_escaped = escape_like(q)
     candidates = (
         db.query(Dish.id, Dish.name)
         .filter(Dish.name.ilike(f"%{q_escaped}%", escape="\\"))
