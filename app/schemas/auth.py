@@ -1,8 +1,10 @@
 from pydantic import BaseModel
+from .users import UserRead
 
 
 class Token(BaseModel):
     access_token: str
+    user: UserRead
     token_type: str = "bearer"
 
 

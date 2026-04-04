@@ -8,7 +8,6 @@ pydantic-settings==2.2.1
 psycopg[binary]==3.2.12
 psycopg2-binary
 pytest
-passlib==1.7.4
 bcrypt==4.3.0
 python-jose==3.4.0
 cryptography==46.0.3

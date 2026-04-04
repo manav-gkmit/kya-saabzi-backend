@@ -13,6 +13,7 @@ from app.schemas.users import UserCreate, UserRead, UserLogin
 from app.models.households import Household
 from app.models.users import User
 from app.database.db import get_db
+from app.util import get_current_user
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -47,20 +48,39 @@ async def register_user(
     if db.query(User).filter(User.username == user_data.username).first():
         throw_conflict("Username is already taken.", identifier_fingerprint)
 
-    # 1. Create a Household first
-    household_name = user_data.household_name or f"{user_data.username}'s Home"
-    household = Household(name=household_name)
-    db.add(household)
-    db.flush() # Get the household ID without committing yet
+    # 1. Get or Create Household
+    if user_data.invite_code:
+        invite_code = user_data.invite_code.upper().strip()
+        household = (
+            db.query(Household).filter(Household.invite_code == invite_code).first()
+        )
+        if not household:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Invalid invite code provided.",
+            )
+        is_new_household = False
+    else:
+        household_name = user_data.household_name or f"{user_data.username}'s Home"
+        household = Household(name=household_name)
+        db.add(household)
+        db.flush()  # Get the household ID
+        is_new_household = True
 
     # 2. Create User and link to household
     user = User(
         username=user_data.username,
         email=user_data.email,
         hashed_password=get_password_hash(user_data.password),
-        household_id=household.id
+        household_id=household.id,
     )
     db.add(user)
+    db.flush()  # Get the user ID
+
+    # 3. If it was a new household, assign this user as admin
+    if is_new_household:
+        household.admin_id = user.id
+
     db.commit()
     db.refresh(user)
     
@@ -68,6 +88,14 @@ async def register_user(
     return user
 
 
+
+
+@router.get("/me", response_model=UserRead, status_code=status.HTTP_200_OK)
+async def get_current_user_profile(
+    user: User = Depends(get_current_user),
+):
+    """Returns the authenticated user's profile."""
+    return user
 
 
 @router.post("/login", response_model=Token, status_code=status.HTTP_200_OK)
@@ -102,4 +130,4 @@ async def login_for_access_token(
         )
     access_token = create_access_token(subject=str(user.id))
     logger.info("Login successful user_id=%s", user.id)
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {"access_token": access_token, "user": user, "token_type": "bearer"}

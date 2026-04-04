@@ -22,7 +22,8 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: PasswordStr
-    household_name: Optional[str] = None # If provided, creates a new household
+    household_name: Optional[str] = None  # If code is not provided, creates a new one
+    invite_code: Optional[str] = None  # Use this to join existing instead of creating
 
 
 class UserUpdate(BaseModel):
