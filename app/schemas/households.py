@@ -33,7 +33,7 @@ class HouseholdJoin(BaseModel):
 
     @field_validator("invite_code", mode="before")
     @classmethod
-    def normalize_invite_code(cls, v: str) -> str:
+    def normalize_invite_code(cls, v: Any) -> Any:
         """Strip whitespace and uppercase the invite code before validation."""
         if isinstance(v, str):
             return v.strip().upper()
