@@ -2,7 +2,7 @@ import logging
 import random
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import List
+from typing import List, Optional, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import desc, func
@@ -26,10 +26,10 @@ class HybridRecoEngine:
         # SQLAlchemy 2.0+ pattern
         self.household = db.get(Household, household_id)
 
-    def get_top_3(self) -> List[RecommendationRead]:
+    def get_top_3(self, meal_type: Optional[str] = None) -> List[RecommendationRead]:
         # 1. Fetch Candidates (Hard Filters)
         # Apply meal_type filter & household dietary preference
-        meal_type = get_current_meal_type()
+        meal_type = meal_type or get_current_meal_type()
         query = self.db.query(Dish).filter(Dish.meal_type == meal_type)
         
         if self.household and (self.household.preferences or {}).get("is_vegetarian"):
@@ -63,14 +63,6 @@ class HybridRecoEngine:
             recent_dish_ids = {r[0] for r in results}
 
         available_candidates = [c for c in candidates if c.id not in recent_dish_ids]
-
-        if not available_candidates:
-            # Fallback: if totally empty, relax the meal_type constraint but KEEP dietary constraint
-            query = self.db.query(Dish)
-            if self.household and self.household.preferences.get("is_vegetarian"):
-                query = query.filter(Dish.dish_type.in_(["veg", "vegan"]))
-
-            available_candidates = [c for c in query.all() if c.id not in recent_dish_ids]
 
         # 3. Scoring & Ranking
         scored_dishes = []
@@ -139,6 +131,7 @@ class HybridRecoEngine:
 
 @router.get("/", response_model=List[RecommendationRead])
 async def get_recommendation(
+    meal_type: Optional[Literal["breakfast", "lunch", "dinner", "snack"]] = None,
     household_id: uuid.UUID = Depends(get_current_household),
     db: Session = Depends(get_db),
 ):
@@ -146,9 +139,14 @@ async def get_recommendation(
     Cleaned up Hybrid Recommendation Engine.
     Uses multi-tenant isolation, cooldown filters, and weighted ranking.
     """
-    logger.info("Generating reco for household_id=%s", household_id)
+    resolved_meal_type = meal_type or get_current_meal_type()
+    logger.info(
+        "Generating reco for household_id=%s meal_type=%s",
+        household_id,
+        resolved_meal_type,
+    )
     engine = HybridRecoEngine(db, household_id)
-    recos = engine.get_top_3()
+    recos = engine.get_top_3(meal_type=resolved_meal_type)
 
     if not recos:
         raise HTTPException(

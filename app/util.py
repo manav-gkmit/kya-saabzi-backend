@@ -81,10 +81,13 @@ def get_current_meal_type() -> str:
     """Helper to determine breakfast/lunch/dinner based on current hour."""
     from datetime import datetime
     hour = datetime.now().hour
+    
     if 5 <= hour < 11:
         return "breakfast"
-    if 11 <= hour < 16:
+    elif 11 <= hour < 16:
         return "lunch"
-    if 16 <= hour < 19:
+    elif 16 <= hour < 19:
         return "snack"
-    return "dinner"
+    else:
+        return "dinner"
+
