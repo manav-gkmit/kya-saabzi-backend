@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,7 +14,23 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Handle app lifecycle.
+    """
+    logger.info(
+        "Starting %s v%s in %s mode",
+        settings.APP_NAME,
+        settings.APP_VERSION,
+        "debug" if settings.DEBUG else "production",
+    )
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
+
 
 origins = settings.CORS_ORIGINS
 
@@ -30,16 +47,6 @@ app.include_router(dish.router)
 app.include_router(cooklogs.router)
 app.include_router(recommendation.router)
 app.include_router(households.router)
-
-
-@app.on_event("startup")
-async def startup_event():
-    logger.info(
-        "Starting %s v%s in %s mode",
-        settings.APP_NAME,
-        settings.APP_VERSION,
-        "debug" if settings.DEBUG else "production",
-    )
 
 
 @app.middleware("http")
