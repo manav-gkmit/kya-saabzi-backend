@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 @router.get("/search", response_model=List[DishSearchResponse])
 async def search_dishes(
     q: str,
+    _user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     limit: int = Query(default=5, ge=1, le=50),
 ):
@@ -29,6 +30,9 @@ async def search_dishes(
     Helps prevent duplicate entries (e.g. 'palak paneer' vs 'palakpaner').
     """
     q = q.lower().strip()
+    if len(q) < 3:
+        return []
+
     # Prefilter at DB level: only load dishes whose name contains the query string.
     # This avoids loading the entire table into memory for the common case.
     q_escaped = escape_like(q)

@@ -3,9 +3,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
 from app.routers import auth, cooklogs, dish, households, recommendation
+from app.utils.rate_limit import limiter
 
 
 logging.basicConfig(
@@ -17,9 +20,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """
-    Handle app lifecycle.
-    """
+    """Handle app lifecycle."""
     logger.info(
         "Starting %s v%s in %s mode",
         settings.APP_NAME,
@@ -31,17 +32,20 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# --- Rate limiting ---
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-origins = settings.CORS_ORIGINS
-
+# --- CORS ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# --- Routers ---
 app.include_router(auth.router)
 app.include_router(dish.router)
 app.include_router(cooklogs.router)

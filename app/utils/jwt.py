@@ -1,7 +1,10 @@
-from datetime import datetime, timedelta, timezone
-from typing import Optional
+"""Access token creation and decoding using PyJWT."""
+from __future__ import annotations
+
 import uuid
-from jose import jwt, JWTError
+from datetime import datetime, timedelta, timezone
+
+import jwt
 
 from app.config import settings
 
@@ -12,51 +15,39 @@ ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
 def create_access_token(
     subject: str,
-    expires_delta: Optional[timedelta] = None,
+    expires_delta: timedelta | None = None,
     include_jti: bool = False,
 ) -> str:
-    """
-    Creates a new access token.
+    """Create a signed JWT access token.
 
     Args:
-        subject (str): The subject of the token.
-        expires_delta (Optional[timedelta], optional): The token's expiration
-            delta. Defaults to None.
-        include_jti (bool, optional): Whether to include a unique token
-            identifier. Defaults to False.
+        subject: The token subject (typically user ID).
+        expires_delta: Custom expiry. Defaults to ACCESS_TOKEN_EXPIRE_MINUTES.
+        include_jti: Whether to add a unique token identifier claim.
 
     Returns:
-        str: The encoded access token.
+        Encoded JWT string.
     """
     now = datetime.now(timezone.utc)
     if expires_delta is None:
         expires_delta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    payload = {
+    payload: dict = {
         "sub": str(subject),
         "iat": int(now.timestamp()),
         "exp": int((now + expires_delta).timestamp()),
     }
     if include_jti:
         payload["jti"] = str(uuid.uuid4())
-    token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
-    return token
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
 def decode_access_token(token: str) -> dict:
-    """
-    Decodes an access token.
-
-    Args:
-        token (str): The encoded access token.
+    """Decode and verify a JWT access token.
 
     Raises:
-        JWTError: If the token is invalid or expired.
-
-    Returns:
-        dict: The token's payload.
+        jwt.InvalidTokenError: If the token is malformed, expired, or tampered.
     """
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        return payload
-    except JWTError:
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except jwt.InvalidTokenError:
         raise
