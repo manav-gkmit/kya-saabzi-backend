@@ -17,6 +17,7 @@ from app.utils.jwt import create_access_token
 from app.utils.rate_limit import limiter
 from app.utils.security import get_password_hash, verify_password
 from app.utils.tokens import (
+    TokenReuseError,
     create_refresh_token,
     revoke_all_for_user,
     revoke_token,
@@ -147,6 +148,14 @@ async def refresh_access_token(
     """Exchange a valid refresh token for a new access + refresh pair."""
     try:
         old_record, new_refresh = validate_and_rotate(db, body.refresh_token)
+    except TokenReuseError as exc:
+        # Commit the bulk-revocation before raising so the DB change is not rolled back.
+        db.commit()
+        logger.warning("Token reuse detected user_id=%s — all sessions revoked", exc.user_id)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(exc),
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

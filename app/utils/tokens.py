@@ -15,6 +15,18 @@ from app.models.refresh_tokens import RefreshToken
 logger = logging.getLogger(__name__)
 
 
+class TokenReuseError(Exception):
+    """Raised when a revoked refresh token is presented (possible theft).
+
+    The caller **must** commit the database session before returning a response
+    so that the bulk-revocation of all user sessions is persisted.
+    """
+
+    def __init__(self, user_id: UUID) -> None:
+        self.user_id = user_id
+        super().__init__("Token reuse detected. All sessions revoked.")
+
+
 def create_refresh_token(db: Session, user_id: UUID) -> str:
     """Persist a new refresh token and return the raw (unhashed) value."""
     raw_token = secrets.token_urlsafe(48)
@@ -45,9 +57,12 @@ def validate_and_rotate(db: Session, raw_token: str) -> tuple[RefreshToken, str]
         ValueError: If the token is invalid, expired, or already revoked.
     """
     token_hash = RefreshToken.hash_token(raw_token)
+    # Lock the row so concurrent refresh requests cannot both read revoked_at=NULL
+    # and each successfully rotate the same token.
     record = (
         db.query(RefreshToken)
         .filter(RefreshToken.token_hash == token_hash)
+        .with_for_update()
         .first()
     )
 
@@ -55,9 +70,11 @@ def validate_and_rotate(db: Session, raw_token: str) -> tuple[RefreshToken, str]
         raise ValueError("Refresh token not found.")
 
     if record.is_revoked:
-        # Token reuse detected — revoke every token for this user as a safety measure
+        # Token reuse detected — revoke every token for this user as a safety measure.
+        # Raise TokenReuseError so the caller can commit before returning, ensuring
+        # the bulk-revocation is not lost on rollback.
         _revoke_all_for_user(db, record.user_id)
-        raise ValueError("Token reuse detected. All sessions revoked.")
+        raise TokenReuseError(record.user_id)
 
     if record.is_expired:
         raise ValueError("Refresh token has expired. Please log in again.")

@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 @router.get("/search", response_model=List[DishSearchResponse])
 async def search_dishes(
     q: str,
-    user: User = Depends(get_current_user),
+    _user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     limit: int = Query(default=5, ge=1, le=50),
 ):
