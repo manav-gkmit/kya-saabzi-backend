@@ -29,6 +29,9 @@ async def search_dishes(
     Helps prevent duplicate entries (e.g. 'palak paneer' vs 'palakpaner').
     """
     q = q.lower().strip()
+    if len(q) < 3:
+        return []
+
     # Prefilter at DB level: only load dishes whose name contains the query string.
     # This avoids loading the entire table into memory for the common case.
     q_escaped = escape_like(q)
