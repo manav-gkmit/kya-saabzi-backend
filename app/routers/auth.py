@@ -151,7 +151,7 @@ async def refresh_access_token(
     except TokenReuseError as exc:
         # Commit the bulk-revocation before raising so the DB change is not rolled back.
         db.commit()
-        logger.warning("Token reuse detected user_id=%s — all sessions revoked", exc.user_id)
+        logger.warning("Token reuse detected — user_id=%s, all sessions revoked", exc.user_id)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(exc),
