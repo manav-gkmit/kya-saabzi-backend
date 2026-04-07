@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 from typing import Dict, Any, List
 from uuid import UUID
@@ -9,6 +9,7 @@ from app.schemas.households import HouseholdRead, HouseholdUpdate, HouseholdJoin
 from app.util import get_current_user, get_current_household
 from app.models.users import User
 from app.schemas.users import UserRead
+from app.utils.rate_limit import limiter
 
 router = APIRouter(prefix="/households", tags=["households"])
 
@@ -72,7 +73,9 @@ async def get_household_members(
 
 
 @router.post("/join", response_model=HouseholdRead)
+@limiter.limit("3/minute")
 async def join_household(
+    request: Request,
     join_data: HouseholdJoin,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

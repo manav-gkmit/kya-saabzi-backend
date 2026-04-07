@@ -8,7 +8,7 @@ import string
 
 def generate_invite_code():
     return "".join(
-        secrets.choice(string.ascii_uppercase + string.digits) for _ in range(6)
+        secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8)
     )
 
 

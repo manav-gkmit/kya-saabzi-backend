@@ -4,7 +4,7 @@ import hashlib
 import logging
 from typing import NoReturn
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.database.db import get_db
@@ -14,6 +14,7 @@ from app.schemas.auth import RefreshRequest, Token, TokenRefresh
 from app.schemas.users import UserCreate, UserLogin, UserRead
 from app.util import get_current_user
 from app.utils.jwt import create_access_token
+from app.utils.rate_limit import limiter
 from app.utils.security import get_password_hash, verify_password
 from app.utils.tokens import (
     create_refresh_token,
@@ -45,7 +46,9 @@ def _throw_conflict(detail: str, fingerprint: str) -> NoReturn:
 # ---------------------------------------------------------------------------
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+@limiter.limit("5/minute")
 async def register_user(
+    request: Request,
     user_data: UserCreate,
     db: Session = Depends(get_db),
 ):
@@ -103,7 +106,9 @@ async def register_user(
 # ---------------------------------------------------------------------------
 
 @router.post("/login", response_model=Token)
+@limiter.limit("5/minute")
 async def login_for_access_token(
+    request: Request,
     user_data: UserLogin,
     db: Session = Depends(get_db),
 ):
@@ -133,7 +138,9 @@ async def login_for_access_token(
 
 
 @router.post("/refresh", response_model=TokenRefresh)
+@limiter.limit("10/minute")
 async def refresh_access_token(
+    request: Request,
     body: RefreshRequest,
     db: Session = Depends(get_db),
 ):
