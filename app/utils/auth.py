@@ -1,11 +1,16 @@
+"""FastAPI dependencies for authentication and household resolution."""
+from __future__ import annotations
+
+import uuid
+
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from sqlalchemy.orm import Session
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt import InvalidTokenError
-from app.utils.jwt import decode_access_token
+from sqlalchemy.orm import Session
+
 from app.database.db import get_db
 from app.models.users import User
-import uuid
+from app.utils.jwt import decode_access_token
 
 auth_scheme = HTTPBearer(auto_error=False)
 
@@ -14,41 +19,33 @@ def get_current_user(
     creds: HTTPAuthorizationCredentials = Depends(auth_scheme),
     db: Session = Depends(get_db),
 ) -> User:
-    """
-    FastAPI dependency to get the current user from the database based on the
-    provided JWT token.
-
-    Args:
-        creds (HTTPAuthorizationCredentials): The HTTP authorization
-            credentials.
-        db (Session): The database session.
+    """Return the authenticated user from the JWT bearer token.
 
     Raises:
-        HTTPException: If the user is not authenticated, the token is invalid,
-            or the user is not found.
-
-    Returns:
-        User: The current user.
+        HTTPException: 401 if credentials are missing, invalid, or the
+            corresponding user no longer exists.
     """
     if not creds or creds.scheme.lower() != "bearer":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
         )
-    token = creds.credentials
+
     try:
-        payload = decode_access_token(token)
+        payload = decode_access_token(creds.credentials)
     except InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
         )
+
     user_id = payload.get("sub")
     if user_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
         )
+
     try:
         user_id_uuid = uuid.UUID(user_id)
     except ValueError:
@@ -56,18 +53,26 @@ def get_current_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid user ID format in token",
         )
+
     user = db.query(User).filter(User.id == user_id_uuid).first()
     if not user:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
         )
     return user
 
 
-def get_current_household(user: User = Depends(get_current_user)) -> uuid.UUID:
-    """
-    Dependency to ensure the user belongs to a household.
-    Returns the household_id.
+def get_current_household(
+    user: User = Depends(get_current_user),
+) -> uuid.UUID:
+    """Dependency that ensures the user belongs to a household.
+
+    Returns:
+        The user's ``household_id``.
+
+    Raises:
+        HTTPException: 403 if the user has no household assignment.
     """
     if not user.household_id:
         raise HTTPException(
@@ -75,19 +80,3 @@ def get_current_household(user: User = Depends(get_current_user)) -> uuid.UUID:
             detail="User does not belong to a household.",
         )
     return user.household_id
-
-
-def get_current_meal_type() -> str:
-    """Helper to determine breakfast/lunch/dinner based on current hour."""
-    from datetime import datetime
-    hour = datetime.now().hour
-    
-    if 5 <= hour < 11:
-        return "breakfast"
-    elif 11 <= hour < 16:
-        return "lunch"
-    elif 16 <= hour < 19:
-        return "snack"
-    else:
-        return "dinner"
-

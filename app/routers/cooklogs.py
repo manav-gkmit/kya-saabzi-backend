@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 from app.schemas.cooklogs import CookLogRead
 from app.database.db import get_db
-from app.util import get_current_user
+from app.utils.auth import get_current_user
 from app.models.users import User
 from app.models.cooklogs import CookLog
 

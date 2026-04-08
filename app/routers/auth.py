@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import hashlib
 import logging
 from typing import NoReturn
@@ -12,7 +10,7 @@ from app.models.households import Household
 from app.models.users import User
 from app.schemas.auth import RefreshRequest, Token, TokenRefresh
 from app.schemas.users import UserCreate, UserLogin, UserRead
-from app.util import get_current_user
+from app.utils.auth import get_current_user
 from app.utils.jwt import create_access_token
 from app.utils.rate_limit import limiter
 from app.utils.security import get_password_hash, verify_password

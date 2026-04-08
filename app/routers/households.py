@@ -1,14 +1,22 @@
+"""Household management HTTP endpoints — thin adapter over services."""
+
+from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
-from typing import Dict, Any, List
-from uuid import UUID
 
 from app.database.db import get_db
 from app.models.households import Household
-from app.schemas.households import HouseholdRead, HouseholdUpdate, HouseholdJoin
-from app.util import get_current_user, get_current_household
 from app.models.users import User
+from app.schemas.households import HouseholdJoin, HouseholdRead, HouseholdUpdate
 from app.schemas.users import UserRead
+from app.services.household import (
+    cleanup_empty_household,
+    create_private_household,
+    reassign_admin_if_needed,
+    update_household_preferences,
+)
+from app.utils.auth import get_current_household, get_current_user
 from app.utils.rate_limit import limiter
 
 router = APIRouter(prefix="/households", tags=["households"])
@@ -32,44 +40,40 @@ async def update_my_household(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Update household preferences.
-    Only the household Admin can rename it or change shared settings.
-    """
+    """Update household name and/or preferences (admin only)."""
     household = db.get(Household, user.household_id)
     if not household:
         raise HTTPException(status_code=404, detail="Household not found")
 
-    # Security check: Admin only
     if household.admin_id and household.admin_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the household admin can update these settings.",
         )
 
-    if update_data.name:
-        household.name = update_data.name
-
+    prefs_patch = None
     if update_data.preferences:
-        # Merge new preferences into existing ones
-        current_prefs = household.preferences or {}
-        new_prefs_dict = update_data.preferences.dict(exclude_unset=True)
-        new_prefs = {**current_prefs, **new_prefs_dict}
-        household.preferences = new_prefs
+        prefs_patch = update_data.preferences.model_dump(exclude_unset=True)
+
+    update_household_preferences(
+        db,
+        household,
+        name=update_data.name,
+        preferences_patch=prefs_patch,
+    )
 
     db.commit()
     db.refresh(household)
     return household
 
 
-@router.get("/me/members", response_model=List[UserRead])
+@router.get("/me/members", response_model=list[UserRead])
 async def get_household_members(
     household_id: UUID = Depends(get_current_household),
     db: Session = Depends(get_db),
 ):
     """List all users belonging to the current household."""
-    members = db.query(User).filter(User.household_id == household_id).all()
-    return members
+    return db.query(User).filter(User.household_id == household_id).all()
 
 
 @router.post("/join", response_model=HouseholdRead)
@@ -81,38 +85,26 @@ async def join_household(
     db: Session = Depends(get_db),
 ):
     """Join an existing household using a short invite code."""
-    invite_code = join_data.invite_code
-    target_household = (
-        db.query(Household).filter(Household.invite_code == invite_code).first()
+    target = (
+        db.query(Household)
+        .filter(Household.invite_code == join_data.invite_code)
+        .first()
     )
-
-    if not target_household:
+    if not target:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Household with this invite code not found.",
         )
+    if user.household_id == target.id:
+        return target
 
-    if user.household_id == target_household.id:
-        return target_household
-
-    # Keep track of old household to potentially clean up
     old_household_id = user.household_id
+    user.household_id = target.id
+    db.flush()
 
-    # Update user's household
-    user.household_id = target_household.id
+    cleanup_empty_household(db, old_household_id)
     db.commit()
-
-    # Optional: Clean up old household if empty
-    remaining_members = (
-        db.query(User).filter(User.household_id == old_household_id).count()
-    )
-    if remaining_members == 0:
-        old_household = db.get(Household, old_household_id)
-        if old_household:
-            db.delete(old_household)
-            db.commit()
-
-    return target_household
+    return target
 
 
 @router.post("/leave", response_model=HouseholdRead)
@@ -120,37 +112,21 @@ async def leave_household(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Leave the current household.
-    A new private household will be created for the user.
-    """
+    """Leave the current household; a new private household is created."""
     old_household_id = user.household_id
 
-    # Find other members in the current household
     other_members = (
         db.query(User)
         .filter(User.household_id == old_household_id, User.id != user.id)
-        .order_by(User.created_at.asc())
-        .all()
+        .count()
     )
-
-    if not other_members:
-        # User is already alone, just return current household
+    if other_members == 0:
         return db.get(Household, old_household_id)
 
-    # 1. Create a new household for the leaving user
-    new_household = Household(name=f"{user.username}'s Home", admin_id=user.id)
-    db.add(new_household)
-    db.flush()
-
-    # 2. Update user's household
-    user.household_id = new_household.id
-
-    # 3. Handle old household admin reassignment if the leaving user was the admin
     old_household = db.get(Household, old_household_id)
-    if old_household and old_household.admin_id == user.id:
-        # Reassign admin to the next oldest member
-        old_household.admin_id = other_members[0].id
+    reassign_admin_if_needed(db, old_household, user.id)  # type: ignore[arg-type]
+
+    new_household = create_private_household(db, user)
 
     db.commit()
     db.refresh(new_household)
@@ -163,15 +139,11 @@ async def remove_household_member(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """
-    Remove a member from the household. Only the admin can do this.
-    The removed member will be moved to a new private household.
-    """
+    """Remove a member from the household (admin only)."""
     household = db.get(Household, user.household_id)
     if not household:
         raise HTTPException(status_code=404, detail="Household not found")
 
-    # Security check: Admin only
     if household.admin_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -184,25 +156,14 @@ async def remove_household_member(
             detail="You cannot remove yourself. Use the /leave endpoint instead.",
         )
 
-    # Find the member to remove
     member = (
         db.query(User)
         .filter(User.id == member_id, User.household_id == household.id)
         .first()
     )
-
     if not member:
-        raise HTTPException(
-            status_code=404, detail="Member not found in your household"
-        )
+        raise HTTPException(status_code=404, detail="Member not found in your household")
 
-    # 1. Create a new household for the removed member
-    new_household = Household(name=f"{member.username}'s Home", admin_id=member.id)
-    db.add(new_household)
-    db.flush()
-
-    # 2. Update member's household
-    member.household_id = new_household.id
-
+    create_private_household(db, member)
     db.commit()
     return

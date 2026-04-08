@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 import pytest
 import uuid
 from fastapi import HTTPException, status
-from app.util import get_current_user
+from app.utils.auth import get_current_user
 from app.models.users import User
 from app.utils.jwt import create_access_token, decode_access_token
 from jose import jwt, JWTError
