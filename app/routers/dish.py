@@ -37,12 +37,6 @@ async def create_dish(
     db: Session = Depends(get_db),
 ):
     """Log a cooked dish — finds or creates the canonical entry, then records the cook event."""
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-        )
-
     logger.info("Dish log request user_id=%s input=%s", user.id, dish_data.name)
 
     dish = find_or_create_dish(

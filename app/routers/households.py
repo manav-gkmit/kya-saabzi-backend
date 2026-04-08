@@ -124,8 +124,7 @@ async def leave_household(
         return db.get(Household, old_household_id)
 
     old_household = db.get(Household, old_household_id)
-    if old_household:
-        reassign_admin_if_needed(db, old_household, user.id)
+    reassign_admin_if_needed(db, old_household, user.id)  # type: ignore[arg-type]
 
     new_household = create_private_household(db, user)
 

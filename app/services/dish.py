@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import difflib
 import logging
+from uuid import UUID
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database.helpers import escape_like
@@ -12,6 +14,8 @@ from app.models.dishes import Dish
 from app.utils.time import get_current_meal_type
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_FALLBACK_LIMIT = 50
 
 
 def search_dishes(
@@ -38,11 +42,12 @@ def search_dishes(
     )
 
     if not candidates:
-        candidates = db.query(Dish.id, Dish.name).all()
+        candidates = db.query(Dish.id, Dish.name).limit(DEFAULT_FALLBACK_LIMIT).all()
 
     results: list[dict] = []
     for dish_id, dish_name in candidates:
-        similarity = difflib.SequenceMatcher(None, query, dish_name).ratio()
+        # Compute similarity from normalized values to ignore case differences
+        similarity = difflib.SequenceMatcher(None, query, dish_name.lower()).ratio()
         if similarity > 0.4:
             results.append({
                 "id": dish_id,
@@ -71,37 +76,48 @@ def find_or_create_dish(
     """
     input_name = name.lower().strip()
 
-    dish = db.query(Dish).filter(Dish.name == input_name).first()
+    dish = db.query(Dish).filter(func.lower(Dish.name) == input_name).first()
     if dish:
         logger.debug("Using existing dish: %s", dish.name)
         return dish
 
     existing = db.query(Dish.id, Dish.name).all()
+    # Normalize candidate names for fuzzy matching
+    name_map = {d.name.lower(): d for d in existing}
     close = difflib.get_close_matches(
         input_name,
-        [d.name for d in existing],
+        list(name_map.keys()),
         n=1,
         cutoff=0.85,
     )
     if close:
-        matched = next(d for d in existing if d.name == close[0])
+        matched = name_map[close[0]]
         dish = db.get(Dish, matched.id)
         logger.info(
-            "Automatic typo correction: '%s' → '%s'",
+            "Automatic typo correction: '%s' → '%s' (ID: %s)",
             input_name,
-            close[0],
+            matched.name,
+            matched.id,
         )
         return dish  # type: ignore[return-value]
 
     resolved_meal = meal_type or get_current_meal_type()
-    dish = Dish(
-        name=input_name,
-        dish_type=dish_type,
-        meal_type=resolved_meal,
-        spiciness=spiciness,
-        prep_time_minutes=prep_time_minutes,
-        calories_estimate=calories_estimate,
-    )
+    
+    # Avoid passing None for columns with nullable=False to use DB defaults
+    dish_kwargs = {
+        "name": input_name,
+        "meal_type": resolved_meal,
+    }
+    if dish_type is not None:
+        dish_kwargs["dish_type"] = dish_type
+    if spiciness is not None:
+        dish_kwargs["spiciness"] = spiciness
+    if prep_time_minutes is not None:
+        dish_kwargs["prep_time_minutes"] = prep_time_minutes
+    if calories_estimate is not None:
+        dish_kwargs["calories_estimate"] = calories_estimate
+
+    dish = Dish(**dish_kwargs)
     db.add(dish)
     db.flush()
     logger.info("Created new canonical dish: %s", input_name)
@@ -111,9 +127,9 @@ def find_or_create_dish(
 def create_cook_log(
     db: Session,
     *,
-    household_id: object,
-    user_id: object,
-    dish_id: object,
+    household_id: UUID,
+    user_id: UUID,
+    dish_id: UUID,
     note: str | None = None,
     rating: int | None = None,
 ) -> CookLog:

@@ -26,6 +26,8 @@ class HybridRecoEngine:
         self._db = db
         self._household_id = household_id
         self._household = db.get(Household, household_id)
+        if self._household is None:
+            raise ValueError(f"Household with ID {household_id} not found")
 
     def get_top_n(
         self,
