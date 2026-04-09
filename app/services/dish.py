@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import difflib
 import logging
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import func
@@ -89,16 +90,23 @@ def find_or_create_dish(
     dish = db.query(Dish).filter(
         func.lower(Dish.name) == input_name,
         (Dish.household_id == household_id) | (Dish.household_id.is_(None))
-    ).first()
+    ).order_by(Dish.household_id.is_(None)).first()
     if dish:
         logger.debug("Using existing dish: %s", dish.name)
         return dish
 
-    existing = db.query(Dish.id, Dish.name).filter(
+    existing = db.query(Dish.id, Dish.name, Dish.household_id).filter(
         (Dish.household_id == household_id) | (Dish.household_id.is_(None))
     ).all()
-    # Normalize candidate names for fuzzy matching
-    name_map = {d.name.lower(): d for d in existing}
+    # Normalize candidate names for fuzzy matching; household-specific rows
+    # shadow global ones so a household override is always preferred.
+    name_map: dict[str, Any] = {}
+    for d in existing:
+        key = d.name.lower()
+        if key not in name_map or (
+            name_map[key].household_id is None and d.household_id is not None
+        ):
+            name_map[key] = d
     close = difflib.get_close_matches(
         input_name,
         list(name_map.keys()),
