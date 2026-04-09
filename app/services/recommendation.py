@@ -46,7 +46,10 @@ class HybridRecoEngine:
     # ------------------------------------------------------------------
 
     def _fetch_candidates(self, meal_type: str) -> list[Dish]:
-        query = self._db.query(Dish).filter(Dish.meal_type == meal_type)
+        query = self._db.query(Dish).filter(
+            Dish.meal_type == meal_type,
+            (Dish.household_id == self._household_id) | (Dish.household_id.is_(None))
+        )
 
         prefs = self._prefs()
         if prefs.get("is_vegetarian"):

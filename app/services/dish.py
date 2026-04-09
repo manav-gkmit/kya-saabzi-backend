@@ -22,7 +22,9 @@ def search_dishes(
     db: Session,
     query: str,
     *,
+    household_id: UUID,
     limit: int = 5,
+    offset: int = 0,
 ) -> list[dict]:
     """Return dishes matching *query* using ILIKE + difflib fallback.
 
@@ -38,11 +40,17 @@ def search_dishes(
     candidates = (
         db.query(Dish.id, Dish.name)
         .filter(Dish.name.ilike(f"%{q_escaped}%", escape="\\"))
+        .filter((Dish.household_id == household_id) | (Dish.household_id.is_(None)))
         .all()
     )
 
     if not candidates:
-        candidates = db.query(Dish.id, Dish.name).limit(DEFAULT_FALLBACK_LIMIT).all()
+        candidates = (
+            db.query(Dish.id, Dish.name)
+            .filter((Dish.household_id == household_id) | (Dish.household_id.is_(None)))
+            .limit(DEFAULT_FALLBACK_LIMIT)
+            .all()
+        )
 
     results: list[dict] = []
     for dish_id, dish_name in candidates:
@@ -56,6 +64,7 @@ def search_dishes(
             })
 
     results.sort(key=lambda x: x["similarity"], reverse=True)
+    results = results[offset:]
     return results[:limit]
 
 
@@ -63,6 +72,7 @@ def find_or_create_dish(
     db: Session,
     name: str,
     *,
+    household_id: UUID,
     dish_type: str | None = None,
     meal_type: str | None = None,
     spiciness: int | None = None,
@@ -76,12 +86,17 @@ def find_or_create_dish(
     """
     input_name = name.lower().strip()
 
-    dish = db.query(Dish).filter(func.lower(Dish.name) == input_name).first()
+    dish = db.query(Dish).filter(
+        func.lower(Dish.name) == input_name,
+        (Dish.household_id == household_id) | (Dish.household_id.is_(None))
+    ).first()
     if dish:
         logger.debug("Using existing dish: %s", dish.name)
         return dish
 
-    existing = db.query(Dish.id, Dish.name).all()
+    existing = db.query(Dish.id, Dish.name).filter(
+        (Dish.household_id == household_id) | (Dish.household_id.is_(None))
+    ).all()
     # Normalize candidate names for fuzzy matching
     name_map = {d.name.lower(): d for d in existing}
     close = difflib.get_close_matches(
@@ -106,6 +121,7 @@ def find_or_create_dish(
     # Avoid passing None for columns with nullable=False to use DB defaults
     dish_kwargs = {
         "name": input_name,
+        "household_id": household_id,
         "meal_type": resolved_meal,
     }
     if dish_type is not None:
