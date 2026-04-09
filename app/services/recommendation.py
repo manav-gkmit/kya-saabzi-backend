@@ -63,9 +63,11 @@ class HybridRecoEngine:
         # default cannot interfere with scoring.
         seen: dict[str, Dish] = {}
         for dish in all_candidates:
-            normalised = dish.name.lower()
-            if normalised not in seen or dish.household_id is not None:
-                seen[normalised] = dish
+            normalized = dish.name.lower()
+            if normalized not in seen or (
+                seen[normalized].household_id is None and dish.household_id is not None
+            ):
+                seen[normalized] = dish
 
         return list(seen.values())
 
