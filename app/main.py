@@ -7,7 +7,7 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.config import settings
-from app.routers import auth, cooklogs, dish, households, recommendation
+from app.api.v1.api import api_router
 from app.utils.rate_limit import limiter
 
 
@@ -46,11 +46,7 @@ app.add_middleware(
 )
 
 # --- Routers ---
-app.include_router(auth.router)
-app.include_router(dish.router)
-app.include_router(cooklogs.router)
-app.include_router(recommendation.router)
-app.include_router(households.router)
+app.include_router(api_router, prefix="/api/v1")
 
 
 @app.middleware("http")
