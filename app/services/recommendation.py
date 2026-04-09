@@ -55,7 +55,19 @@ class HybridRecoEngine:
         if prefs.get("is_vegetarian"):
             query = query.filter(Dish.dish_type.in_(["veg", "vegan"]))
 
-        return query.all()
+        all_candidates = query.all()
+
+        # De-duplicate by normalised name: household-specific rows override global defaults.
+        # If both a household dish and a global (household_id=None) dish share the same
+        # normalised name, only the household-specific dish is kept so that the global
+        # default cannot interfere with scoring.
+        seen: dict[str, Dish] = {}
+        for dish in all_candidates:
+            normalised = dish.name.lower()
+            if normalised not in seen or dish.household_id is not None:
+                seen[normalised] = dish
+
+        return list(seen.values())
 
     def _apply_cooldown(self, candidates: list[Dish]) -> list[Dish]:
         prefs = self._prefs()
