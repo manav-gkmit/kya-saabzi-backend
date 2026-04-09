@@ -1,6 +1,6 @@
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
 from typing import List
 import uuid
@@ -21,6 +21,8 @@ logger = logging.getLogger(__name__)
 async def get_cooklogs(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
+    limit: int = Query(default=10, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
 ):
     """
     Retrieve all cook logs for the currently authenticated user.
@@ -41,7 +43,8 @@ async def get_cooklogs(
         .filter(CookLog.user_id == user.id)
         .filter(CookLog.deleted_at.is_(None))
         .order_by(CookLog.created_at.desc())
-        .limit(7)
+        .limit(limit)
+        .offset(offset)
         .all()
     )
     logger.info("Fetched %s cook logs for user_id=%s", len(logs), user.id)

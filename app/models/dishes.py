@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, Integer, Enum, Table, ForeignKey, CheckConstraint
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from .common import BaseModel, Base
 
@@ -15,7 +16,14 @@ class Dish(BaseModel):
     __tablename__ = "dishes"
     __table_args__ = (CheckConstraint("spiciness >= 1 AND spiciness <= 5", name="check_spiciness_range"),)
 
-    name = Column(String(255), nullable=False, unique=True, index=True)
+    household_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("households.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+
+    name = Column(String(255), nullable=False, index=True)
     
     # Metadata for better recommendation
     dish_type = Column(

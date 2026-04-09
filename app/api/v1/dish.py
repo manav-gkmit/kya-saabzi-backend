@@ -18,16 +18,17 @@ logger = logging.getLogger(__name__)
 @router.get("/search", response_model=list[DishSearchResponse])
 async def search_dishes_endpoint(
     q: str,
-    _user: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     limit: int = Query(default=5, ge=1, le=50),
+    offset: int = Query(default=0, ge=0),
 ):
     """Search for dishes by name using fuzzy matching."""
     q = q.lower().strip()
     if len(q) < 3:
         return []
 
-    return search_dishes(db, q, limit=limit)
+    return search_dishes(db, q, household_id=user.household_id, limit=limit, offset=offset)
 
 
 @router.post("/", response_model=DishRead)
@@ -42,6 +43,7 @@ async def create_dish(
     dish = find_or_create_dish(
         db,
         dish_data.name,
+        household_id=user.household_id,
         dish_type=dish_data.dish_type,
         meal_type=dish_data.meal_type,
         spiciness=dish_data.spiciness,

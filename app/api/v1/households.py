@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 from sqlalchemy.orm import Session
 
 from app.database.db import get_db
@@ -71,9 +71,11 @@ async def update_my_household(
 async def get_household_members(
     household_id: UUID = Depends(get_current_household),
     db: Session = Depends(get_db),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
 ):
     """List all users belonging to the current household."""
-    return db.query(User).filter(User.household_id == household_id).all()
+    return db.query(User).filter(User.household_id == household_id).limit(limit).offset(offset).all()
 
 
 @router.post("/join", response_model=HouseholdRead)
