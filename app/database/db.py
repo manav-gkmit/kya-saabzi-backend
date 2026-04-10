@@ -11,6 +11,10 @@ logger = logging.getLogger(__name__)
 
 engine = create_engine(
     settings.DATABASE_URL,
+    pool_size=10,
+    max_overflow=20,
+    pool_pre_ping=True,
+    pool_recycle=3600,
     future=True,
     echo=settings.DEBUG,
 )
