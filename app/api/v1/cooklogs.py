@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_model=List[CookLogRead])
-async def get_cooklogs(
+def get_cooklogs(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     limit: int = Query(default=10, ge=1, le=100),

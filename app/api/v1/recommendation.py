@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_model=list[RecommendationRead])
-async def get_recommendation(
+def get_recommendation(
     meal_type: Literal["breakfast", "lunch", "dinner", "snack"] | None = None,
     household_id: uuid.UUID = Depends(get_current_household),
     db: Session = Depends(get_db),

@@ -23,7 +23,7 @@ router = APIRouter(prefix="/households", tags=["households"])
 
 
 @router.get("/me", response_model=HouseholdRead)
-async def get_my_household(
+def get_my_household(
     household_id: UUID = Depends(get_current_household),
     db: Session = Depends(get_db),
 ):
@@ -35,7 +35,7 @@ async def get_my_household(
 
 
 @router.patch("/me", response_model=HouseholdRead)
-async def update_my_household(
+def update_my_household(
     update_data: HouseholdUpdate,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -68,7 +68,7 @@ async def update_my_household(
 
 
 @router.get("/me/members", response_model=list[UserRead])
-async def get_household_members(
+def get_household_members(
     household_id: UUID = Depends(get_current_household),
     db: Session = Depends(get_db),
     limit: int = Query(default=50, ge=1, le=100),
@@ -80,7 +80,7 @@ async def get_household_members(
 
 @router.post("/join", response_model=HouseholdRead)
 @limiter.limit("3/minute")
-async def join_household(
+def join_household(
     request: Request,
     join_data: HouseholdJoin,
     user: User = Depends(get_current_user),
@@ -110,7 +110,7 @@ async def join_household(
 
 
 @router.post("/leave", response_model=HouseholdRead)
-async def leave_household(
+def leave_household(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -136,7 +136,7 @@ async def leave_household(
 
 
 @router.delete("/me/members/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def remove_household_member(
+def remove_household_member(
     member_id: UUID,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

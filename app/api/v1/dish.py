@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/search", response_model=list[DishSearchResponse])
-async def search_dishes_endpoint(
+def search_dishes_endpoint(
     q: str,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -32,7 +32,7 @@ async def search_dishes_endpoint(
 
 
 @router.post("/", response_model=DishRead)
-async def create_dish(
+def create_dish(
     dish_data: DishCreate,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
