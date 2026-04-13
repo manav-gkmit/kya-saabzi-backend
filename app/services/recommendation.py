@@ -108,6 +108,8 @@ class HybridRecoEngine:
             .filter(
                 CookLog.dish_id.in_(dish_ids),
                 CookLog.created_at >= thirty_days_ago,
+                CookLog.household_id == self._household_id,
+                CookLog.deleted_at.is_(None),
             )
             .group_by(CookLog.dish_id)
             .all()
@@ -119,6 +121,7 @@ class HybridRecoEngine:
             .filter(
                 CookLog.dish_id.in_(dish_ids),
                 CookLog.household_id == self._household_id,
+                CookLog.deleted_at.is_(None),
             )
             .group_by(CookLog.dish_id)
             .all()
