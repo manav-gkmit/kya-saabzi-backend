@@ -97,47 +97,58 @@ class HybridRecoEngine:
         self,
         dishes: list[Dish],
     ) -> list[tuple[Dish, dict]]:
-        scored = [
-            (d, self._score_breakdown(d)) for d in dishes
-        ]
+        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+        dish_ids = [d.id for d in dishes]
+
+        if not dish_ids:
+            return []
+
+        pop_rows = (
+            self._db.query(CookLog.dish_id, func.count(CookLog.id))
+            .filter(
+                CookLog.dish_id.in_(dish_ids),
+                CookLog.created_at >= thirty_days_ago,
+                CookLog.household_id == self._household_id,
+                CookLog.deleted_at.is_(None),
+            )
+            .group_by(CookLog.dish_id)
+            .all()
+        )
+        pop_map = {row[0]: row[1] for row in pop_rows}
+
+        hist_rows = (
+            self._db.query(CookLog.dish_id, func.avg(CookLog.rating))
+            .filter(
+                CookLog.dish_id.in_(dish_ids),
+                CookLog.household_id == self._household_id,
+                CookLog.deleted_at.is_(None),
+            )
+            .group_by(CookLog.dish_id)
+            .all()
+        )
+        hist_map = {row[0]: float(row[1]) for row in hist_rows if row[1] is not None}
+
+        scored = []
+        for d in dishes:
+            global_count = pop_map.get(d.id, 0)
+            pop_score = float(min(global_count, 10))
+
+            avg_rating = hist_map.get(d.id, 0.0)
+            hist_score = float(avg_rating) * 2
+
+            rand_score = random.uniform(0, 10)
+
+            total = (pop_score * 0.2) + (hist_score * 0.5) + (rand_score * 0.3)
+
+            scored.append((d, {
+                "popularity": round(pop_score, 2),
+                "history": round(hist_score, 2),
+                "randomness": round(rand_score, 2),
+                "total": round(total, 2),
+            }))
+
         scored.sort(key=lambda x: x[1]["total"], reverse=True)
         return scored
-
-    def _score_breakdown(self, dish: Dish) -> dict:
-        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
-
-        global_count = (
-            self._db.query(func.count(CookLog.id))
-            .filter(
-                CookLog.dish_id == dish.id,
-                CookLog.created_at >= thirty_days_ago,
-            )
-            .scalar()
-            or 0
-        )
-        pop_score = float(min(global_count, 10))
-
-        avg_rating = (
-            self._db.query(func.avg(CookLog.rating))
-            .filter(
-                CookLog.dish_id == dish.id,
-                CookLog.household_id == self._household_id,
-            )
-            .scalar()
-            or 0.0
-        )
-        hist_score = float(avg_rating) * 2
-
-        rand_score = random.uniform(0, 10)
-
-        total = (pop_score * 0.2) + (hist_score * 0.5) + (rand_score * 0.3)
-
-        return {
-            "popularity": round(pop_score, 2),
-            "history": round(hist_score, 2),
-            "randomness": round(rand_score, 2),
-            "total": round(total, 2),
-        }
 
     def _build_results(
         self,

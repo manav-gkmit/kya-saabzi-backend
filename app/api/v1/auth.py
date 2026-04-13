@@ -46,7 +46,7 @@ def _throw_conflict(detail: str, fingerprint: str) -> NoReturn:
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")
-async def register_user(
+def register_user(
     request: Request,
     user_data: UserCreate,
     db: Session = Depends(get_db),
@@ -106,7 +106,7 @@ async def register_user(
 
 @router.post("/login", response_model=Token)
 @limiter.limit("5/minute")
-async def login_for_access_token(
+def login_for_access_token(
     request: Request,
     user_data: UserLogin,
     db: Session = Depends(get_db),
@@ -138,7 +138,7 @@ async def login_for_access_token(
 
 @router.post("/refresh", response_model=TokenRefresh)
 @limiter.limit("10/minute")
-async def refresh_access_token(
+def refresh_access_token(
     request: Request,
     body: RefreshRequest,
     db: Session = Depends(get_db),
@@ -171,7 +171,7 @@ async def refresh_access_token(
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(
+def logout(
     body: RefreshRequest,
     db: Session = Depends(get_db),
 ):
@@ -182,7 +182,7 @@ async def logout(
 
 
 @router.post("/logout/all", status_code=status.HTTP_204_NO_CONTENT)
-async def logout_all_sessions(
+def logout_all_sessions(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -197,7 +197,7 @@ async def logout_all_sessions(
 # ---------------------------------------------------------------------------
 
 @router.get("/me", response_model=UserRead)
-async def get_current_user_profile(
+def get_current_user_profile(
     user: User = Depends(get_current_user),
 ):
     """Returns the authenticated user's profile."""
