@@ -96,9 +96,11 @@ Interactive Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 To run the entire stack using Docker:
 ```bash
-docker build -t kya-saabzi-backend .
-docker run -p 8000:8000 --env-file .env kya-saabzi-backend
+docker compose up --build
 ```
+
+By default the container runs Alembic migrations and seeders on startup. To disable, set
+`RUN_MIGRATIONS=0` and/or `RUN_SEEDERS=0` in your environment.
 
 ---
 
