@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 from sqlalchemy.orm import Session
 
 from app.database.db import SessionLocal
@@ -22,6 +24,12 @@ def seed_users(*, db: Session | None = None) -> None:
             db.add(household)
             db.flush()
 
+        force_password = os.environ.get("SEEDER_FORCE_PASSWORD", "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "y",
+        }
         seed_password = get_password_hash("password123")
         users: list[User] = []
         for i in range(1, 11):
@@ -38,8 +46,9 @@ def seed_users(*, db: Session | None = None) -> None:
                 db.add(user)
             else:
                 user.username = username
-                user.hashed_password = seed_password
                 user.household_id = household.id
+                if force_password:
+                    user.hashed_password = seed_password
             users.append(user)
 
         db.flush()

@@ -96,6 +96,7 @@ Interactive Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 To run the entire stack using Docker:
 ```bash
+cp .env.example .env
 docker compose up --build
 ```
 

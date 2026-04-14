@@ -9,8 +9,16 @@ if [ -z "${DATABASE_URL:-}" ]; then
   exit 1
 fi
 
-if [ "${RUN_MIGRATIONS}" != "0" ]; then
+if [ -z "${SECRET_KEY:-}" ]; then
+  echo "SECRET_KEY is required."
+  exit 1
+fi
+
+if [ "${RUN_MIGRATIONS}" != "0" ] || [ "${RUN_SEEDERS}" != "0" ]; then
   python -m app.cli.db_wait
+fi
+
+if [ "${RUN_MIGRATIONS}" != "0" ]; then
   alembic upgrade head
 fi
 

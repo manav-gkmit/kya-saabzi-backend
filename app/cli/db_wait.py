@@ -11,14 +11,17 @@ def wait_for_db(*, database_url: str, timeout_s: int) -> None:
     deadline = time.monotonic() + timeout_s
     last_exc: Exception | None = None
 
-    while time.monotonic() < deadline:
-        try:
-            engine = create_engine(database_url, pool_pre_ping=True)
-            with engine.connect():
-                return
-        except OperationalError as exc:
-            last_exc = exc
-            time.sleep(1)
+    engine = create_engine(database_url, pool_pre_ping=True)
+    try:
+        while time.monotonic() < deadline:
+            try:
+                with engine.connect():
+                    return
+            except OperationalError as exc:
+                last_exc = exc
+                time.sleep(1)
+    finally:
+        engine.dispose()
 
     msg = f"Database not reachable after {timeout_s}s."
     raise RuntimeError(msg) from last_exc
@@ -35,4 +38,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

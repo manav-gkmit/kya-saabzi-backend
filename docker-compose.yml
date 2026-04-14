@@ -2,9 +2,9 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-kyasaabzi}
-      POSTGRES_USER: ${POSTGRES_USER:-kyasaabzi}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-kyasaabzi}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -19,17 +19,17 @@ services:
     ports:
       - "8000:8000"
     environment:
-      SECRET_KEY: ${SECRET_KEY:-dev-secret-change-me}
+      SECRET_KEY: ${SECRET_KEY}
       DEBUG: ${DEBUG:-false}
       CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000"]}
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://kyasaabzi:kyasaabzi@db:5432/kyasaabzi}
+      DATABASE_URL: ${DATABASE_URL}
       DB_WAIT_TIMEOUT: ${DB_WAIT_TIMEOUT:-60}
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-1}
       RUN_SEEDERS: ${RUN_SEEDERS:-1}
+      SEEDER_FORCE_PASSWORD: ${SEEDER_FORCE_PASSWORD:-0}
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
   postgres_data:
-
