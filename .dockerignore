@@ -1,12 +1,16 @@
 .git
 .gitignore
 .vscode
+.env
 __pycache__
 *.pyc
 *.pyo
 *.pyd
 .pytest_cache
+.mypy_cache
+.ruff_cache
 venv
+.venv
 .env.example
 .DS_Store
 *.db
@@ -14,3 +18,4 @@ alembic/versions/*.pyc
 **/__pycache__/
 postman
 .postman
+tests

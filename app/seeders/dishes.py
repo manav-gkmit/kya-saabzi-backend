@@ -1,22 +1,20 @@
-from typing import Optional
+from __future__ import annotations
+
 from sqlalchemy.orm import Session
-from .base import SessionLocal
+
+from app.database.db import SessionLocal
 from app.models.dishes import Dish, Ingredient
 
 
-def seed_dishes(db: Optional[Session] = None):
-    """
-    Seeds global dishes and ingredients. 
-    Runs in a single transaction.
-    """
-    standalone = False
-    if db is None:
+def seed_dishes(*, db: Session | None = None) -> None:
+    standalone = db is None
+    if standalone:
         db = SessionLocal()
-        standalone = True
-        
+
+    assert db is not None
+
     try:
-        # 1. Create Ingredients
-        ingredients_list = [
+        ingredients_list: list[dict[str, str | None]] = [
             {"name": "Paneer", "category": "Protein"},
             {"name": "Potato", "category": "Vegetable"},
             {"name": "Cauliflower", "category": "Vegetable"},
@@ -29,18 +27,16 @@ def seed_dishes(db: Optional[Session] = None):
             {"name": "Onion", "category": "Vegetable"},
             {"name": "Ginger-Garlic Paste", "category": "Spice"},
         ]
-        
-        db_ingredients = {}
+        db_ingredients: dict[str, Ingredient] = {}
         for ing_data in ingredients_list:
-            ing = db.query(Ingredient).filter(Ingredient.name == ing_data["name"]).first()
-            if not ing:
+            name = str(ing_data["name"])
+            ing = db.query(Ingredient).filter(Ingredient.name == name).first()
+            if ing is None:
                 ing = Ingredient(**ing_data)
                 db.add(ing)
-            db_ingredients[ing_data["name"]] = ing
-        
-        # 2. Create Dishes
-        dishes_list = [
-            # ... (data remains same)
+            db_ingredients[name] = ing
+
+        dishes_list: list[dict[str, object]] = [
             {
                 "name": "Paneer Butter Masala",
                 "dish_type": "veg",
@@ -48,7 +44,7 @@ def seed_dishes(db: Optional[Session] = None):
                 "spiciness": 2,
                 "prep_time_minutes": 30,
                 "calories_estimate": 450,
-                "ingredients": ["Paneer", "Tomato", "Onion", "Ginger-Garlic Paste"]
+                "ingredients": ["Paneer", "Tomato", "Onion", "Ginger-Garlic Paste"],
             },
             {
                 "name": "Aloo Gobi",
@@ -57,7 +53,7 @@ def seed_dishes(db: Optional[Session] = None):
                 "spiciness": 3,
                 "prep_time_minutes": 25,
                 "calories_estimate": 250,
-                "ingredients": ["Potato", "Cauliflower", "Onion"]
+                "ingredients": ["Potato", "Cauliflower", "Onion"],
             },
             {
                 "name": "Dal Tadka",
@@ -66,7 +62,7 @@ def seed_dishes(db: Optional[Session] = None):
                 "spiciness": 2,
                 "prep_time_minutes": 20,
                 "calories_estimate": 200,
-                "ingredients": ["Lentils (Dal)", "Tomato", "Onion"]
+                "ingredients": ["Lentils (Dal)", "Tomato", "Onion"],
             },
             {
                 "name": "Chicken Curry",
@@ -75,7 +71,7 @@ def seed_dishes(db: Optional[Session] = None):
                 "spiciness": 4,
                 "prep_time_minutes": 45,
                 "calories_estimate": 550,
-                "ingredients": ["Chicken", "Tomato", "Onion", "Ginger-Garlic Paste"]
+                "ingredients": ["Chicken", "Tomato", "Onion", "Ginger-Garlic Paste"],
             },
             {
                 "name": "Palak Paneer",
@@ -84,7 +80,7 @@ def seed_dishes(db: Optional[Session] = None):
                 "spiciness": 2,
                 "prep_time_minutes": 30,
                 "calories_estimate": 350,
-                "ingredients": ["Paneer", "Spinach", "Onion"]
+                "ingredients": ["Paneer", "Spinach", "Onion"],
             },
             {
                 "name": "Paratha",
@@ -93,34 +89,26 @@ def seed_dishes(db: Optional[Session] = None):
                 "spiciness": 1,
                 "prep_time_minutes": 15,
                 "calories_estimate": 300,
-                "ingredients": ["Wheat Flour", "Potato"]
-            }
+                "ingredients": ["Wheat Flour", "Potato"],
+            },
         ]
 
         for d_data in dishes_list:
-            ingredient_names = d_data.pop("ingredients")
-            dish = db.query(Dish).filter(Dish.name == d_data["name"]).first()
-            
-            if dish:
-                # Update existing dish row metadata
+            ingredient_names = list(d_data.pop("ingredients"))
+            name = str(d_data["name"])
+            dish = db.query(Dish).filter(Dish.name == name).first()
+            if dish is None:
+                dish = Dish(**d_data)
+                db.add(dish)
+            else:
                 for key, value in d_data.items():
                     setattr(dish, key, value)
-                
-                # Reconcile its ingredients relationship
-                dish.ingredients = [] # Clear and re-append
-                for name in ingredient_names:
-                    dish.ingredients.append(db_ingredients[name])
-            else:
-                # Create new dish
-                dish = Dish(**d_data)
-                for name in ingredient_names:
-                    dish.ingredients.append(db_ingredients[name])
-                db.add(dish)
-        
+            dish.ingredients = [db_ingredients[str(n)] for n in ingredient_names]
+
         db.commit()
-    except Exception as e:
+    except Exception:
         db.rollback()
-        raise e
+        raise
     finally:
         if standalone:
             db.close()

@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+    ports:
+      - "8000:8000"
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+      DEBUG: ${DEBUG:-false}
+      CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000"]}
+      DATABASE_URL: ${DATABASE_URL}
+      DB_WAIT_TIMEOUT: ${DB_WAIT_TIMEOUT:-60}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-1}
+      RUN_SEEDERS: ${RUN_SEEDERS:-1}
+      SEEDER_FORCE_PASSWORD: ${SEEDER_FORCE_PASSWORD:-0}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
