@@ -18,8 +18,8 @@
     -   **Dietary Smart**: Respects household vegetarian/vegan preferences at the core level.
     -   **Hybrid Scoring**: Combines global popularity, your own history/ratings, and a touch of randomness.
 -   **📜 Kitchen History (Cook Logs)**: Track exactly what was cooked, when, and how well it was received with ratings and personal notes.
--   **🔐 Enterprise-grade Auth**: Secure JWT-based authentication with password hashing (bcrypt) and role-based access.
--   **🚀 Ready for Production**: Built-in Docker support, Alembic migrations, and comprehensive logging.
+-   **🔐 Enterprise-grade Auth & Security**: Secure JWT-based authentication (PyJWT) with password hashing (bcrypt), role-based access, and robust rate limiting (slowapi) to protect against brute-force attacks.
+-   **🚀 Ready for Production**: Built-in Docker support, Alembic migrations, synchronous database operations with proper connection pooling, and comprehensive logging.
 
 ---
 
@@ -41,7 +41,7 @@ The heart of "Kya Saabzi" is its **Hybrid Scoring Model**, which ensures quality
 -   **ORM**: [SQLAlchemy 2.0](https://www.sqlalchemy.org/)
 -   **Database**: [PostgreSQL](https://www.postgresql.org/)
 -   **Migrations**: [Alembic](https://alembic.sqlalchemy.org/)
--   **Security**: [python-jose](https://python-jose.readthedocs.io/), [passlib](https://passlib.readthedocs.io/)
+-   **Security**: [PyJWT](https://pyjwt.readthedocs.io/), [passlib](https://passlib.readthedocs.io/), [slowapi](https://slowapi.readthedocs.io/)
 -   **Validation**: [Pydantic v2](https://docs.pydantic.dev/)
 
 ---
@@ -110,12 +110,14 @@ By default the container runs Alembic migrations and seeders on startup. To disa
 ```text
 kya-saabzi-backend/
 ├── app/
+│   ├── api/
+│   │   └── v1/       # Versioned API Routers (Auth, Dish, Recommendation...)
+│   ├── services/     # Business logic layer
 │   ├── models/       # SQLAlchemy 2.0 Models
-│   ├── routers/      # API Endpoints (Auth, Dish, Recommendation...)
 │   ├── schemas/      # Pydantic v2 Validation Schemas
 │   ├── seeders/      # Database seeding scripts
 │   ├── database/     # DB Session & configuration
-│   └── util/         # Auth & common utilities
+│   └── utils/        # Organized utilities (auth, time, etc.)
 ├── alembic/          # Database migrations
 ├── tests/            # Pytest test suite
 └── Dockerfile        # Containerization
