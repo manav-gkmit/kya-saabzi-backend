@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from pydantic import StringConstraints, EmailStr
 from sqlalchemy import Column, TIMESTAMP
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
 Timestamp = datetime
 
@@ -16,7 +16,8 @@ Email = EmailStr
 PasswordStr = Annotated[str, StringConstraints(min_length=8, max_length=128)]
 
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 
 class BaseModel(Base):

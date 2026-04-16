@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field, UUID4, field_validator, StringConstraints
-from typing import Optional, Annotated, Literal
+from pydantic import BaseModel, Field, UUID4, field_validator, StringConstraints, ConfigDict
+from typing import Annotated, Literal
 
 from app.models.common import Timestamp
 
@@ -25,16 +25,16 @@ class DishBase(BaseModel):
 
 
 class DishCreate(DishBase):
-    note: Optional[Annotated[
-            str, 
-            StringConstraints(min_length=3, max_length=255),
-        ]] = Field(None, examples=["Made it extra spicy"])
-    rating: Optional[int] = Field(None, ge=1, le=5, examples=[4])
+    note: Annotated[
+        str,
+        StringConstraints(min_length=3, max_length=255),
+    ] | None = Field(None, examples=["Made it extra spicy"])
+    rating: int | None = Field(None, ge=1, le=5, examples=[4])
     spiciness: int = Field(1, ge=1, le=5, examples=[2])
-    meal_type: Optional[Literal['breakfast', 'lunch', 'dinner', 'snack']] = Field(None, examples=["lunch"])
+    meal_type: Literal['breakfast', 'lunch', 'dinner', 'snack'] | None = Field(None, examples=["lunch"])
     dish_type: Literal['veg', 'non-veg', 'vegan'] = Field("veg", examples=["veg"])
-    prep_time_minutes: Optional[int] = Field(None, examples=[30])
-    calories_estimate: Optional[int] = Field(None, examples=[350])
+    prep_time_minutes: int | None = Field(None, examples=[30])
+    calories_estimate: int | None = Field(None, examples=[350])
 
 
 class DishSearchResponse(BaseModel):
@@ -42,17 +42,17 @@ class DishSearchResponse(BaseModel):
     name: str
     similarity: float
 
+    model_config = ConfigDict(from_attributes=True)
 
 class DishRead(DishBase):
     id: UUID4
     dish_type: str
     meal_type: str
     spiciness: int
-    prep_time_minutes: Optional[int] = None
-    calories_estimate: Optional[int] = None
+    prep_time_minutes: int | None = None
+    calories_estimate: int | None = None
     created_at: Timestamp
     updated_at: Timestamp
-    deleted_at: Optional[Timestamp]
+    deleted_at: Timestamp | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

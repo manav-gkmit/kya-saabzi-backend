@@ -1,5 +1,4 @@
-from pydantic import BaseModel
-from typing import List
+from pydantic import BaseModel, ConfigDict
 from .dishes import DishRead
 
 
@@ -12,8 +11,7 @@ class ScoreDetail(BaseModel):
 
 class RecommendationRead(BaseModel):
     dish: DishRead
-    notes: List[str]
+    notes: list[str]
     score_breakdown: ScoreDetail
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

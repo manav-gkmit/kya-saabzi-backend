@@ -1,5 +1,4 @@
-from pydantic import BaseModel, UUID4
-from typing import Optional
+from pydantic import BaseModel, UUID4, ConfigDict
 
 from app.models.common import Timestamp
 from .dishes import DishBase
@@ -7,7 +6,9 @@ from .dishes import DishBase
 
 class CookLogBase(BaseModel):
     dish_id: UUID4
-    note: Optional[str] = None
+    note: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CookLogCreate(CookLogBase):
@@ -19,8 +20,7 @@ class CookLogRead(CookLogBase):
     user_id: UUID4
     created_at: Timestamp
     updated_at: Timestamp
-    deleted_at: Optional[Timestamp] = None
+    deleted_at: Timestamp | None = None
     dish: DishBase
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
