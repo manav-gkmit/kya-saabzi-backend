@@ -1,7 +1,7 @@
-from typing import Optional, Annotated
+from typing import Annotated
 from app.models.common import PasswordStr, Timestamp, Email
 
-from pydantic import BaseModel, StringConstraints, UUID4, EmailStr
+from pydantic import BaseModel, StringConstraints, UUID4, EmailStr, ConfigDict
 
 
 Username = Annotated[
@@ -22,27 +22,26 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: PasswordStr
-    household_name: Optional[str] = None  # If code is not provided, creates a new one
-    invite_code: Optional[str] = None  # Use this to join existing instead of creating
+    household_name: str | None = None  # If code is not provided, creates a new one
+    invite_code: str | None = None  # Use this to join existing instead of creating
 
 
 class UserUpdate(BaseModel):
-    email: Optional[Email]
-    username: Optional[Username]
-    password: Optional[PasswordStr]
+    email: Email | None = None
+    username: Username | None = None
+    password: PasswordStr | None = None
 
 
 class UserRead(BaseModel):
     id: UUID4
     email: Email
     username: Username
-    household_id: Optional[UUID4] = None
+    household_id: UUID4 | None = None
     created_at: Timestamp
     updated_at: Timestamp
-    deleted_at: Optional[Timestamp]
+    deleted_at: Timestamp | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserInDB(UserBase):

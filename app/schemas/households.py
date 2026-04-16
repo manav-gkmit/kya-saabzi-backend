@@ -1,13 +1,13 @@
-from typing import Optional, Dict, Any, List
-from pydantic import BaseModel, UUID4, Field, field_validator
+from typing import Any
+from pydantic import BaseModel, UUID4, Field, field_validator, ConfigDict
 from app.models.common import Timestamp
 
 
 class HouseholdPreferences(BaseModel):
     is_vegetarian: bool = False
     spice_level: str = "medium"
-    avoid_ingredients: List[str] = []
-    preferred_cuisines: List[str] = []
+    avoid_ingredients: list[str] = []
+    preferred_cuisines: list[str] = []
     recommendation_window_days: int = Field(6, ge=0)
     include_recently_cooked: bool = False
 
@@ -21,20 +21,19 @@ class HouseholdCreate(HouseholdBase):
 
 
 class HouseholdUpdate(BaseModel):
-    name: Optional[str] = None
-    preferences: Optional[HouseholdPreferences] = None
+    name: str | None = None
+    preferences: HouseholdPreferences | None = None
 
 
 class HouseholdRead(HouseholdBase):
     id: UUID4
     invite_code: str
-    admin_id: Optional[UUID4] = None
-    preferences: Optional[HouseholdPreferences] = None
+    admin_id: UUID4 | None = None
+    preferences: HouseholdPreferences | None = None
     created_at: Timestamp
     updated_at: Timestamp
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class HouseholdJoin(BaseModel):
