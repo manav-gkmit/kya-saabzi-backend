@@ -19,7 +19,7 @@
     -   **Hybrid Scoring**: Combines global popularity, your own history/ratings, and a touch of randomness.
 -   **📜 Kitchen History (Cook Logs)**: Track exactly what was cooked, when, and how well it was received with ratings and personal notes.
 -   **🔐 Enterprise-grade Auth & Security**: Secure JWT-based authentication (PyJWT) with password hashing (bcrypt), role-based access, and robust rate limiting (slowapi) to protect against brute-force attacks.
--   **🚀 Ready for Production**: Built-in Docker support, Alembic migrations, asynchronous database operations, proper connection pooling, and comprehensive logging.
+-   **🚀 Ready for Production**: Built-in Docker support, Alembic migrations, synchronous database operations with proper connection pooling, and comprehensive logging.
 
 ---
 
