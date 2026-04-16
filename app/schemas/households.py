@@ -6,8 +6,8 @@ from app.models.common import Timestamp
 class HouseholdPreferences(BaseModel):
     is_vegetarian: bool = False
     spice_level: str = "medium"
-    avoid_ingredients: list[str] = []
-    preferred_cuisines: list[str] = []
+    avoid_ingredients: list[str] = Field(default_factory=list)
+    preferred_cuisines: list[str] = Field(default_factory=list)
     recommendation_window_days: int = Field(6, ge=0)
     include_recently_cooked: bool = False
 
