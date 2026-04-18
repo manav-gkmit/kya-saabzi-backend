@@ -7,10 +7,8 @@ from datetime import datetime, timedelta, timezone
 import pytest
 from sqlalchemy.orm import Session
 
-from app.models.households import Household
 from app.models.refresh_tokens import RefreshToken
 from app.models.users import User
-from app.utils.security import get_password_hash
 from app.utils.tokens import (
     TokenReuseError,
     create_refresh_token,
