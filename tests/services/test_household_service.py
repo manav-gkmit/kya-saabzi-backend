@@ -1,7 +1,6 @@
 """Tests for app.services.household — preferences, leave, admin, cleanup."""
 from __future__ import annotations
 
-import pytest
 from sqlalchemy.orm import Session
 
 from app.models.households import Household
@@ -12,7 +11,6 @@ from app.services.household import (
     reassign_admin_if_needed,
     update_household_preferences,
 )
-from app.utils.security import get_password_hash
 
 
 # ---------------------------------------------------------------------------
