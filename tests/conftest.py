@@ -5,7 +5,12 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
 from sqlalchemy.pool import StaticPool
+import sqlite3
+from datetime import datetime, timezone
+
+
 
 from app.main import app
 from app.database.db import get_db
@@ -18,10 +23,36 @@ from app.utils.security import get_password_hash
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
+
+if not hasattr(SQLiteTypeCompiler, "visit_JSONB"):
+    SQLiteTypeCompiler.visit_JSONB = lambda self, type_, **kw: "JSON"
+
+def _adapt_datetime_iso(val: datetime) -> str:
+    """Store datetimes as ISO-8601 with timezone offset."""
+    if val.tzinfo is None:
+        val = val.replace(tzinfo=timezone.utc)
+    return val.isoformat()
+
+
+def _convert_timestamp(val: bytes) -> datetime:
+    """Read timestamps back as timezone-aware (defaulting to UTC)."""
+    dt = datetime.fromisoformat(val.decode())
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+sqlite3.register_adapter(datetime, _adapt_datetime_iso)
+sqlite3.register_converter("TIMESTAMP", _convert_timestamp)
+
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},
+    connect_args={
+        "check_same_thread": False,
+        "detect_types": sqlite3.PARSE_DECLTYPES,
+    },
     poolclass=StaticPool,
+    native_datetime=True,
 )
 TestingSessionLocal = sessionmaker(
     autocommit=False, autoflush=False, bind=engine,
