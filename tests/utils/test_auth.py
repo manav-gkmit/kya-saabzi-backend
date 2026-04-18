@@ -7,11 +7,9 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
-from app.models.households import Household
 from app.models.users import User
 from app.utils.auth import get_current_user, get_current_household
 from app.utils.jwt import create_access_token
-from app.utils.security import get_password_hash
 
 
 # ---------------------------------------------------------------------------
