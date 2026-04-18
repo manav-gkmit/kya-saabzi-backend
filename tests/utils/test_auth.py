@@ -75,6 +75,20 @@ class TestGetCurrentUser:
             get_current_user(creds=_FakeCreds(credentials=token), db=db_session)
         assert exc.value.status_code == 401
 
+    def test_non_string_sub_raises_401(self, db_session: Session) -> None:
+        """A token whose 'sub' is an integer (not a string) should be rejected."""
+        import jwt as pyjwt
+        from app.config import settings
+
+        token = pyjwt.encode(
+            {"sub": 123, "exp": 9999999999},
+            settings.SECRET_KEY,
+            algorithm=settings.ALGORITHM,
+        )
+        with pytest.raises(HTTPException) as exc:
+            get_current_user(creds=_FakeCreds(credentials=token), db=db_session)
+        assert exc.value.status_code == 401
+
     def test_deleted_user_raises_401(self, db_session: Session) -> None:
         """Token for a user ID that doesn't exist in the DB."""
         fake_id = str(uuid.uuid4())
