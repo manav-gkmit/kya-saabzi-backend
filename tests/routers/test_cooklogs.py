@@ -91,12 +91,14 @@ class TestGetCooklogs:
         self, client: TestClient, db_session: Session,
         test_user: User, test_household: Household, auth_headers: dict,
     ) -> None:
-        for i in range(5):
-            _seed_log(db_session, test_user, test_household, f"Dish {i}")
+        names = ["Alpha", "Beta", "Gamma", "Delta", "Epsilon"]
+        for name in names:
+            _seed_log(db_session, test_user, test_household, name)
 
         resp = client.get(f"{BASE_URL}?limit=2&offset=0", headers=auth_headers)
         assert resp.status_code == 200
-        assert len(resp.json()) == 2
+        body = resp.json()
+        assert len(body) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -112,11 +114,14 @@ class TestDeleteCooklog:
         test_user: User, test_household: Household, auth_headers: dict,
     ) -> None:
         log = _seed_log(db_session, test_user, test_household)
-        resp = client.delete(f"{BASE_URL}/{log.id}", headers=auth_headers)
+        log_id = log.id
+        resp = client.delete(f"{BASE_URL}/{log_id}", headers=auth_headers)
         assert resp.status_code == 204
 
-        db_session.refresh(log)
-        assert log.deleted_at is not None
+        db_session.expire_all()
+        refreshed = db_session.get(CookLog, log_id)
+        assert refreshed is not None
+        assert refreshed.deleted_at is not None
 
     def test_foreign_log_returns_403(
         self, client: TestClient, db_session: Session,

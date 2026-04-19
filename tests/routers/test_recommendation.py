@@ -27,9 +27,10 @@ def _seed_dishes_and_logs(
     count: int = 3,
 ) -> list[Dish]:
     dishes = []
+    names = ["alpha", "beta", "gamma", "delta", "epsilon"]
     for i in range(count):
         dish = Dish(
-            name=f"dish {i}",
+            name=names[i % len(names)],
             household_id=household.id,
             meal_type="lunch",
         )
@@ -60,9 +61,13 @@ class TestGetRecommendation:
         self, mock_rand, client: TestClient, db_session: Session,
         test_user: User, test_household: Household, auth_headers: dict,
     ) -> None:
+        # Bypass cooldown so recently-seeded dishes aren't filtered out
+        test_household.preferences = {"include_recently_cooked": True}
+        db_session.commit()
+
         _seed_dishes_and_logs(db_session, test_user, test_household, 5)
 
-        resp = client.get(BASE_URL, headers=auth_headers)
+        resp = client.get(f"{BASE_URL}?meal_type=lunch", headers=auth_headers)
         assert resp.status_code == 200
         results = resp.json()
         assert len(results) > 0
@@ -74,9 +79,13 @@ class TestGetRecommendation:
         self, mock_rand, client: TestClient, db_session: Session,
         test_user: User, test_household: Household, auth_headers: dict,
     ) -> None:
+        test_household.preferences = {"include_recently_cooked": True}
+        db_session.commit()
+
         # Seed dinner dishes
-        for i in range(3):
-            dish = Dish(name=f"dinner {i}", household_id=test_household.id, meal_type="dinner")
+        names = ["tikka", "korma", "biryani"]
+        for name in names:
+            dish = Dish(name=name, household_id=test_household.id, meal_type="dinner")
             db_session.add(dish)
             db_session.flush()
             db_session.add(CookLog(

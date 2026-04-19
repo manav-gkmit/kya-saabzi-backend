@@ -73,8 +73,9 @@ class TestUpdateMyHousehold:
 
     def test_non_admin_returns_403(
         self, client: TestClient, db_session: Session,
-        other_user: User,
+        test_user: User, other_user: User,
     ) -> None:
+        # test_user fixture sets admin_id on test_household
         token = create_access_token(subject=str(other_user.id))
         headers = {"Authorization": f"Bearer {token}"}
         resp = client.patch(
@@ -167,11 +168,13 @@ class TestLeaveHousehold:
         test_user: User, other_user: User,
         test_household: Household, auth_headers: dict,
     ) -> None:
+        old_hh_id = str(test_household.id)
+        user_id = str(test_user.id)
         resp = client.post(LEAVE_URL, headers=auth_headers)
         assert resp.status_code == 200
         new_hh = resp.json()
-        assert new_hh["id"] != str(test_household.id)
-        assert new_hh["admin_id"] == str(test_user.id)
+        assert new_hh["id"] != old_hh_id
+        assert new_hh["admin_id"] == user_id
 
 
 # ---------------------------------------------------------------------------

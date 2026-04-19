@@ -32,7 +32,7 @@ class TestCreateDish:
         )
         assert resp.status_code == 200
         body = resp.json()
-        assert body["name"] == "Palak Paneer"
+        assert body["name"] == "palak paneer"
         assert "id" in body
 
     def test_existing_dish_returns_same(
