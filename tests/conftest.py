@@ -63,6 +63,16 @@ TestingSessionLocal = sessionmaker(
 # Core fixtures
 # ---------------------------------------------------------------------------
 
+@pytest.fixture(autouse=True)
+def _disable_rate_limit():
+    """Disable slowapi rate limiting during tests."""
+    from app.utils.rate_limit import limiter
+    original = limiter.enabled
+    limiter.enabled = False
+    yield
+    limiter.enabled = original
+
+
 @pytest.fixture(scope="function")
 def db_session():
     """Provide a clean database session per test."""
