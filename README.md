@@ -55,7 +55,7 @@ The heart of "Kya Saabzi" is its **Hybrid Scoring Model**, which ensures quality
 ### 2. Installation
 ```bash
 # Clone the repository
-git clone https://github.com/manav-gkmit/kya-saabzi-backend.git
+git clone https://github.com/manav-sh1/kya-saabzi-backend.git
 cd kya-saabzi-backend
 
 # Initialize virtual environment
