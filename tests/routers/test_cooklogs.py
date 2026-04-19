@@ -1,134 +1,147 @@
+"""Integration tests for /api/v1/cooklogs endpoints."""
+from __future__ import annotations
+
+import uuid
+
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+
 from app.main import app
-from app.utils.auth import get_current_user
-from app.models.users import User
-from app.models.dishes import Dish
 from app.models.cooklogs import CookLog
+from app.models.dishes import Dish
+from app.models.households import Household
+from app.models.users import User
+from app.utils.auth import get_current_user
 
 
-def test_get_cooklogs(client: TestClient, db_session: Session, test_user: User):
-    """
-    Test getting cooklogs for the current user.
-    """
-
-    def override_get_current_user():
-        return test_user
-
-    app.dependency_overrides[get_current_user] = override_get_current_user
-
-    dish = Dish(name="test dish")
-    db_session.add(dish)
-    db_session.commit()
-    db_session.refresh(dish)
-
-    cooklog = CookLog(user_id=test_user.id, dish_id=dish.id, note="test note")
-    db_session.add(cooklog)
-    db_session.commit()
-    db_session.refresh(cooklog)
-
-    response = client.get("/cooklogs/")
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 1
-    assert data[0]["note"] == "test note"
-    assert data[0]["dish"]["name"] == "test dish"
-
-    del app.dependency_overrides[get_current_user]
+BASE_URL = "/api/v1/cooklogs"
 
 
-def test_delete_cooklog(client: TestClient, db_session: Session, test_user: User):
-    """
-    Test deleting a cooklog entry.
-    """
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
-    def override_get_current_user():
-        return test_user
-
-    app.dependency_overrides[get_current_user] = override_get_current_user
-
-    dish = Dish(name="test dish")
-    db_session.add(dish)
-    db_session.commit()
-    db_session.refresh(dish)
-
-    cooklog = CookLog(user_id=test_user.id, dish_id=dish.id, note="test note")
-    db_session.add(cooklog)
-    db_session.commit()
-    db_session.refresh(cooklog)
-
-    cooklog_id = cooklog.id
-
-    response = client.delete(f"/cooklogs/{cooklog_id}")
-    assert response.status_code == 204
-
-    deleted_cooklog = (
-        db_session.query(CookLog).filter(CookLog.id == cooklog_id).first()
+def _seed_log(
+    db: Session,
+    user: User,
+    household: Household,
+    dish_name: str = "Test Dish",
+) -> CookLog:
+    dish = Dish(name=dish_name, household_id=household.id, meal_type="lunch")
+    db.add(dish)
+    db.flush()
+    log = CookLog(
+        user_id=user.id,
+        dish_id=dish.id,
+        household_id=household.id,
+        note="test note",
+        rating=4,
     )
-    assert deleted_cooklog.deleted_at is not None
-
-    del app.dependency_overrides[get_current_user]
-
-
-# test to try and get logs of other user
-# test to try and delete logs of other user
+    db.add(log)
+    db.commit()
+    db.refresh(log)
+    return log
 
 
-def test_delete_foreign_cooklog(
-    client: TestClient, db_session: Session, test_user: User, other_user: User
-):
-    """
-    Test that a user cannot delete a cooklog that does not belong to them.
-    """
-
-    def override_get_current_user():
-        return test_user
-
-    app.dependency_overrides[get_current_user] = override_get_current_user
-
-    dish = Dish(name="test dish")
-    db_session.add(dish)
-    db_session.commit()
-    db_session.refresh(dish)
-
-    cooklog = CookLog(user_id=other_user.id, dish_id=dish.id, note="test note")
-    db_session.add(cooklog)
-    db_session.commit()
-    db_session.refresh(cooklog)
-
-    cooklog_id = cooklog.id
-
-    response = client.delete(f"/cooklogs/{cooklog_id}")
-    assert response.status_code == 403
-
-    del app.dependency_overrides[get_current_user]
+# ---------------------------------------------------------------------------
+# GET /api/v1/cooklogs/
+# ---------------------------------------------------------------------------
 
 
-def test_get_foreign_logs(
-    client: TestClient, db_session: Session, test_user: User, other_user: User
-):
-    """
-    Test that a user cannot get the cooklogs of another user.
-    """
+class TestGetCooklogs:
+    """Verify cook log listing with auth and soft-delete filtering."""
 
-    def override_get_current_user():
-        return test_user
+    def test_returns_own_logs(
+        self, client: TestClient, db_session: Session,
+        test_user: User, test_household: Household, auth_headers: dict,
+    ) -> None:
+        _seed_log(db_session, test_user, test_household, "Dish A")
+        _seed_log(db_session, test_user, test_household, "Dish B")
 
-    app.dependency_overrides[get_current_user] = override_get_current_user
+        resp = client.get(BASE_URL, headers=auth_headers)
+        assert resp.status_code == 200
+        assert len(resp.json()) == 2
 
-    dish = Dish(name="test dish")
-    db_session.add(dish)
-    db_session.commit()
-    db_session.refresh(dish)
+    def test_excludes_deleted(
+        self, client: TestClient, db_session: Session,
+        test_user: User, test_household: Household, auth_headers: dict,
+    ) -> None:
+        log = _seed_log(db_session, test_user, test_household)
+        from datetime import datetime, timezone
+        log.deleted_at = datetime.now(timezone.utc)
+        db_session.commit()
 
-    cooklog = CookLog(user_id=other_user.id, dish_id=dish.id, note="test note")
-    db_session.add(cooklog)
-    db_session.commit()
-    db_session.refresh(cooklog)
+        resp = client.get(BASE_URL, headers=auth_headers)
+        assert resp.status_code == 200
+        assert len(resp.json()) == 0
 
-    response = client.get("/cooklogs/")
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 0
+    def test_isolation_from_other_users(
+        self, client: TestClient, db_session: Session,
+        test_user: User, other_user: User,
+        test_household: Household, auth_headers: dict,
+    ) -> None:
+        _seed_log(db_session, other_user, test_household, "Other Dish")
 
-    del app.dependency_overrides[get_current_user]
+        resp = client.get(BASE_URL, headers=auth_headers)
+        assert resp.status_code == 200
+        assert len(resp.json()) == 0
+
+    def test_pagination(
+        self, client: TestClient, db_session: Session,
+        test_user: User, test_household: Household, auth_headers: dict,
+    ) -> None:
+        for i in range(5):
+            _seed_log(db_session, test_user, test_household, f"Dish {i}")
+
+        resp = client.get(f"{BASE_URL}?limit=2&offset=0", headers=auth_headers)
+        assert resp.status_code == 200
+        assert len(resp.json()) == 2
+
+
+# ---------------------------------------------------------------------------
+# DELETE /api/v1/cooklogs/{id}
+# ---------------------------------------------------------------------------
+
+
+class TestDeleteCooklog:
+    """Verify soft-delete with ownership checks."""
+
+    def test_own_log_soft_deleted(
+        self, client: TestClient, db_session: Session,
+        test_user: User, test_household: Household, auth_headers: dict,
+    ) -> None:
+        log = _seed_log(db_session, test_user, test_household)
+        resp = client.delete(f"{BASE_URL}/{log.id}", headers=auth_headers)
+        assert resp.status_code == 204
+
+        db_session.refresh(log)
+        assert log.deleted_at is not None
+
+    def test_foreign_log_returns_403(
+        self, client: TestClient, db_session: Session,
+        test_user: User, other_user: User,
+        test_household: Household, auth_headers: dict,
+    ) -> None:
+        log = _seed_log(db_session, other_user, test_household, "Foreign Dish")
+        resp = client.delete(f"{BASE_URL}/{log.id}", headers=auth_headers)
+        assert resp.status_code == 403
+
+    def test_not_found(
+        self, client: TestClient, auth_headers: dict,
+    ) -> None:
+        fake_id = uuid.uuid4()
+        resp = client.delete(f"{BASE_URL}/{fake_id}", headers=auth_headers)
+        assert resp.status_code == 404
+
+    def test_already_deleted_returns_404(
+        self, client: TestClient, db_session: Session,
+        test_user: User, test_household: Household, auth_headers: dict,
+    ) -> None:
+        log = _seed_log(db_session, test_user, test_household)
+        from datetime import datetime, timezone
+        log.deleted_at = datetime.now(timezone.utc)
+        db_session.commit()
+
+        resp = client.delete(f"{BASE_URL}/{log.id}", headers=auth_headers)
+        assert resp.status_code == 404
