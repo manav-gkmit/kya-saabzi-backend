@@ -11,6 +11,13 @@ class HouseholdPreferences(BaseModel):
     recommendation_window_days: int = Field(6, ge=0)
     include_recently_cooked: bool = False
 
+    @field_validator("avoid_ingredients", "preferred_cuisines", mode="before")
+    @classmethod
+    def normalize_string_list(cls, v: Any) -> list[str]:
+        if not isinstance(v, list):
+            return v
+        return [item.strip().lower() for item in v if isinstance(item, str) and item.strip()]
+
 
 class HouseholdBase(BaseModel):
     name: str

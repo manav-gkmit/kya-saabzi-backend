@@ -59,10 +59,16 @@ class HybridRecoEngine:
         if avoid_ingredients:
             from app.models.dishes import Ingredient
             from sqlalchemy import func
-            avoid_list = [i.lower() for i in avoid_ingredients]
-            query = query.filter(
-                ~Dish.ingredients.any(func.lower(Ingredient.name).in_(avoid_list))
-            )
+            
+            avoid_list = [
+                i.strip().lower() 
+                for i in avoid_ingredients 
+                if isinstance(i, str) and i.strip()
+            ]
+            if avoid_list:
+                query = query.filter(
+                    ~Dish.ingredients.any(func.lower(Ingredient.name).in_(avoid_list))
+                )
 
         all_candidates = query.all()
 
