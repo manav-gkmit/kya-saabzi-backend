@@ -55,6 +55,21 @@ class HybridRecoEngine:
         if prefs.get("is_vegetarian"):
             query = query.filter(Dish.dish_type.in_(["veg", "vegan"]))
 
+        avoid_ingredients = prefs.get("avoid_ingredients")
+        if avoid_ingredients:
+            from app.models.dishes import Ingredient
+            from sqlalchemy import func
+            
+            avoid_list = [
+                i.strip().lower() 
+                for i in avoid_ingredients 
+                if isinstance(i, str) and i.strip()
+            ]
+            if avoid_list:
+                query = query.filter(
+                    ~Dish.ingredients.any(func.lower(Ingredient.name).in_(avoid_list))
+                )
+
         all_candidates = query.all()
 
         # De-duplicate by normalised name: household-specific rows override global defaults.
