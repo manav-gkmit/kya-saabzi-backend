@@ -35,6 +35,7 @@ class DishCreate(DishBase):
     dish_type: Literal['veg', 'non-veg', 'vegan'] = Field("veg", examples=["veg"])
     prep_time_minutes: int | None = Field(None, examples=[30])
     calories_estimate: int | None = Field(None, examples=[350])
+    ingredients: list[str] | None = Field(None, examples=[["spinach", "paneer", "garlic"]])
 
 
 class DishSearchResponse(BaseModel):

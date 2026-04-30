@@ -11,7 +11,8 @@ from sqlalchemy.orm import Session
 
 from app.database.helpers import escape_like
 from app.models.cooklogs import CookLog
-from app.models.dishes import Dish
+from app.models.dishes import Dish, Ingredient
+from app.services.llm import enrich_dish_with_gemini
 from app.utils.time import get_current_meal_type
 
 logger = logging.getLogger(__name__)
@@ -79,6 +80,7 @@ def find_or_create_dish(
     spiciness: int | None = None,
     prep_time_minutes: int | None = None,
     calories_estimate: int | None = None,
+    ingredients: list[str] | None = None,
 ) -> Dish:
     """Exact-match → fuzzy-match → create-new pipeline for a dish.
 
@@ -93,6 +95,9 @@ def find_or_create_dish(
     ).order_by(Dish.household_id.is_(None)).first()
     if dish:
         logger.debug("Using existing dish: %s", dish.name)
+        if ingredients:
+            _attach_ingredients_to_dish(db, dish, ingredients)
+            db.flush()
         return dish
 
     existing = db.query(Dish.id, Dish.name, Dish.household_id).filter(
@@ -122,6 +127,9 @@ def find_or_create_dish(
             matched.name,
             matched.id,
         )
+        if ingredients and dish:
+            _attach_ingredients_to_dish(db, dish, ingredients)
+            db.flush()
         return dish  # type: ignore[return-value]
 
     resolved_meal = meal_type or get_current_meal_type()
@@ -145,7 +153,47 @@ def find_or_create_dish(
     db.add(dish)
     db.flush()
     logger.info("Created new canonical dish: %s", input_name)
+    
+    if ingredients:
+        _attach_ingredients_to_dish(db, dish, ingredients)
+        db.flush()
+
     return dish
+
+
+def _attach_ingredients_to_dish(db: Session, dish: Dish, ingredient_names: list[str]) -> None:
+    """Find or create ingredients by name and attach them to the given dish."""
+    normalized_names = {name.lower().strip() for name in ingredient_names if name.strip()}
+    if not normalized_names:
+        return
+
+    # Find existing ingredients
+    existing_ingredients = db.query(Ingredient).filter(
+        func.lower(Ingredient.name).in_(normalized_names)
+    ).all()
+    
+    existing_map = {ing.name.lower(): ing for ing in existing_ingredients}
+    
+    # Identify which ones need to be created
+    to_create = normalized_names - set(existing_map.keys())
+    
+    new_ingredients = []
+    for name in to_create:
+        ing = Ingredient(name=name)
+        new_ingredients.append(ing)
+        db.add(ing)
+        
+    if new_ingredients:
+        db.flush()
+        for ing in new_ingredients:
+            existing_map[ing.name.lower()] = ing
+
+    # Identify currently linked ingredients to avoid duplication
+    current_ingredient_names = {ing.name.lower() for ing in dish.ingredients}
+    
+    for name in normalized_names:
+        if name not in current_ingredient_names:
+            dish.ingredients.append(existing_map[name])
 
 
 def create_cook_log(
@@ -168,3 +216,36 @@ def create_cook_log(
     db.add(log)
     db.flush()
     return log
+
+def enrich_dish_background_task(dish_id: UUID) -> None:
+    """Background task to fetch missing dish data from Gemini."""
+    db = SessionLocal()
+    try:
+        dish = db.get(Dish, dish_id)
+        if not dish:
+            return
+
+        if dish.ingredients and dish.calories_estimate and dish.prep_time_minutes:
+            return
+
+        logger.info(f"Triggering Gemini enrichment for dish: {dish.name}")
+        result = enrich_dish_with_gemini(dish.name)
+        if not result:
+            return
+
+        if not dish.ingredients and result.ingredients:
+            _attach_ingredients_to_dish(db, dish, result.ingredients)
+            
+        if not dish.calories_estimate and result.calories_estimate:
+            dish.calories_estimate = result.calories_estimate
+            
+        if not dish.prep_time_minutes and result.prep_time_minutes:
+            dish.prep_time_minutes = result.prep_time_minutes
+
+        db.commit()
+        logger.info(f"Successfully enriched dish: {dish.name}")
+    except Exception as e:
+        logger.error(f"Error in enrich_dish_background_task: {e}")
+        db.rollback()
+    finally:
+        db.close()
