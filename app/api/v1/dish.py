@@ -65,7 +65,7 @@ def create_dish(
     db.commit()
     db.refresh(dish)
 
-    if not (dish_data.ingredients and dish_data.calories_estimate and dish_data.prep_time_minutes):
+    if not (dish.ingredients and dish.calories_estimate and dish.prep_time_minutes):
         background_tasks.add_task(enrich_dish_background_task, dish.id)
 
     logger.info(

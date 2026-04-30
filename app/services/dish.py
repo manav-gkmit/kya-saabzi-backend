@@ -9,6 +9,7 @@ from uuid import UUID
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.database.db import SessionLocal
 from app.database.helpers import escape_like
 from app.models.cooklogs import CookLog
 from app.models.dishes import Dish, Ingredient
@@ -225,7 +226,7 @@ def enrich_dish_background_task(dish_id: UUID) -> None:
         if not dish:
             return
 
-        if dish.ingredients and dish.calories_estimate and dish.prep_time_minutes:
+        if dish.ingredients is not None and dish.calories_estimate is not None and dish.prep_time_minutes is not None:
             return
 
         logger.info(f"Triggering Gemini enrichment for dish: {dish.name}")
@@ -233,13 +234,13 @@ def enrich_dish_background_task(dish_id: UUID) -> None:
         if not result:
             return
 
-        if not dish.ingredients and result.ingredients:
+        if dish.ingredients is None and result.ingredients:
             _attach_ingredients_to_dish(db, dish, result.ingredients)
             
-        if not dish.calories_estimate and result.calories_estimate:
+        if dish.calories_estimate is None and result.calories_estimate is not None:
             dish.calories_estimate = result.calories_estimate
             
-        if not dish.prep_time_minutes and result.prep_time_minutes:
+        if dish.prep_time_minutes is None and result.prep_time_minutes is not None:
             dish.prep_time_minutes = result.prep_time_minutes
 
         db.commit()
