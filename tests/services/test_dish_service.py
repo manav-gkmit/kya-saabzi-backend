@@ -1,17 +1,23 @@
 """Tests for app.services.dish — search, find-or-create, cook log creation."""
 from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from uuid import UUID
 
 import pytest
 from sqlalchemy.orm import Session
 
 from app.models.cooklogs import CookLog
-from app.models.dishes import Dish
+from app.models.dishes import Dish, Ingredient
 from app.models.households import Household
 from app.models.users import User
-from app.services.dish import create_cook_log, find_or_create_dish, search_dishes
+from app.services.dish import (
+    _attach_ingredients_to_dish,
+    create_cook_log,
+    enrich_dish_background_task,
+    find_or_create_dish,
+    search_dishes,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -273,3 +279,136 @@ class TestCreateCookLog:
         )
         # Log has an ID (flushed) even without commit
         assert log.id is not None
+
+
+# ---------------------------------------------------------------------------
+# _attach_ingredients_to_dish
+# ---------------------------------------------------------------------------
+
+
+class TestAttachIngredients:
+    """Verify ingredient creation and attachment logic."""
+
+    def test_creates_new_ingredients(
+        self, db_session: Session, test_household: Household,
+    ) -> None:
+        dish = _seed_dish(db_session, "test dish", test_household.id)
+        db_session.commit()
+
+        _attach_ingredients_to_dish(db_session, dish, ["Spinach", "Paneer"])
+        db_session.commit()
+
+        names = {ing.name for ing in dish.ingredients}
+        assert names == {"spinach", "paneer"}
+
+    def test_reuses_existing_ingredients(
+        self, db_session: Session, test_household: Household,
+    ) -> None:
+        existing = Ingredient(name="garlic")
+        db_session.add(existing)
+        dish = _seed_dish(db_session, "garlic dish", test_household.id)
+        db_session.commit()
+
+        _attach_ingredients_to_dish(db_session, dish, ["Garlic"])
+        db_session.commit()
+
+        assert len(dish.ingredients) == 1
+        assert dish.ingredients[0].id == existing.id
+
+    def test_no_duplicates_on_repeated_call(
+        self, db_session: Session, test_household: Household,
+    ) -> None:
+        dish = _seed_dish(db_session, "dup dish", test_household.id)
+        db_session.commit()
+
+        _attach_ingredients_to_dish(db_session, dish, ["tomato"])
+        db_session.commit()
+        _attach_ingredients_to_dish(db_session, dish, ["tomato"])
+        db_session.commit()
+
+        assert len(dish.ingredients) == 1
+
+    def test_empty_list_is_noop(
+        self, db_session: Session, test_household: Household,
+    ) -> None:
+        dish = _seed_dish(db_session, "empty dish", test_household.id)
+        db_session.commit()
+
+        _attach_ingredients_to_dish(db_session, dish, [])
+        db_session.commit()
+
+        assert dish.ingredients == []
+
+
+# ---------------------------------------------------------------------------
+# enrich_dish_background_task
+# ---------------------------------------------------------------------------
+
+
+class TestEnrichDishBackgroundTask:
+    """Verify background enrichment task behaviour."""
+
+    def test_skips_nonexistent_dish(self) -> None:
+        import uuid
+        with patch("app.services.dish.SessionLocal") as mock_session_cls:
+            mock_db = MagicMock()
+            mock_session_cls.return_value = mock_db
+            mock_db.get.return_value = None
+            enrich_dish_background_task(uuid.uuid4())
+            mock_db.commit.assert_not_called()
+
+    def test_skips_fully_enriched_dish(
+        self, db_session: Session, test_household: Household,
+    ) -> None:
+        dish = _seed_dish(db_session, "full dish", test_household.id)
+        ing = Ingredient(name="onion")
+        db_session.add(ing)
+        db_session.flush()
+        dish.ingredients.append(ing)
+        dish.calories_estimate = 300
+        dish.prep_time_minutes = 20
+        db_session.commit()
+
+        with patch("app.services.dish.SessionLocal") as mock_session_cls:
+            mock_db = MagicMock()
+            mock_session_cls.return_value = mock_db
+            mock_db.get.return_value = dish
+            with patch("app.services.dish.enrich_dish_with_gemini") as mock_llm:
+                enrich_dish_background_task(dish.id)
+                mock_llm.assert_not_called()
+
+    def test_enriches_dish_when_data_missing(
+        self, db_session: Session, test_household: Household,
+    ) -> None:
+        dish = _seed_dish(db_session, "bare dish", test_household.id)
+        db_session.commit()
+
+        from app.services.llm import DishEnrichmentResult
+
+        mock_result = DishEnrichmentResult(
+            ingredients=["potato", "oil"],
+            prep_time_minutes=15,
+            calories_estimate=200,
+        )
+
+        with patch("app.services.dish.SessionLocal") as mock_session_cls:
+            mock_db = MagicMock()
+            mock_session_cls.return_value = mock_db
+            mock_db.get.return_value = dish
+            with patch("app.services.dish.enrich_dish_with_gemini", return_value=mock_result):
+                with patch("app.services.dish._attach_ingredients_to_dish") as mock_attach:
+                    enrich_dish_background_task(dish.id)
+                    mock_attach.assert_called_once()
+                    assert dish.calories_estimate == 200
+                    assert dish.prep_time_minutes == 15
+                    mock_db.commit.assert_called_once()
+
+    def test_rolls_back_on_exception(self) -> None:
+        import uuid
+        with patch("app.services.dish.SessionLocal") as mock_session_cls:
+            mock_db = MagicMock()
+            mock_session_cls.return_value = mock_db
+            mock_db.get.side_effect = Exception("db error")
+            enrich_dish_background_task(uuid.uuid4())
+            mock_db.rollback.assert_called_once()
+            mock_db.close.assert_called_once()

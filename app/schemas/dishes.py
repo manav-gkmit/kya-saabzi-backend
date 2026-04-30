@@ -35,6 +35,7 @@ class DishCreate(DishBase):
     dish_type: Literal['veg', 'non-veg', 'vegan'] = Field("veg", examples=["veg"])
     prep_time_minutes: int | None = Field(None, examples=[30])
     calories_estimate: int | None = Field(None, examples=[350])
+    ingredients: list[str] | None = Field(None, examples=[["spinach", "paneer", "garlic"]])
 
 
 class DishSearchResponse(BaseModel):
@@ -51,8 +52,16 @@ class DishRead(DishBase):
     spiciness: int
     prep_time_minutes: int | None = None
     calories_estimate: int | None = None
+    ingredients: list[str] = []
     created_at: Timestamp
     updated_at: Timestamp
     deleted_at: Timestamp | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("ingredients", mode="before")
+    @classmethod
+    def extract_ingredient_names(cls, v: object) -> list[str]:
+        if not v:
+            return []
+        return [ing.name if hasattr(ing, "name") else str(ing) for ing in v]

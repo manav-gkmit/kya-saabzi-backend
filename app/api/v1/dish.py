@@ -2,13 +2,13 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from app.database.db import get_db
 from app.models.users import User
 from app.schemas.dishes import DishCreate, DishRead, DishSearchResponse
-from app.services.dish import create_cook_log, find_or_create_dish, search_dishes
+from app.services.dish import create_cook_log, find_or_create_dish, search_dishes, enrich_dish_background_task
 from app.utils.auth import get_current_user
 
 router = APIRouter(prefix="/dishes", tags=["dishes"])
@@ -34,6 +34,7 @@ def search_dishes_endpoint(
 @router.post("/", response_model=DishRead)
 def create_dish(
     dish_data: DishCreate,
+    background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -49,6 +50,7 @@ def create_dish(
         spiciness=dish_data.spiciness,
         prep_time_minutes=dish_data.prep_time_minutes,
         calories_estimate=dish_data.calories_estimate,
+        ingredients=dish_data.ingredients,
     )
 
     create_cook_log(
@@ -62,6 +64,9 @@ def create_dish(
 
     db.commit()
     db.refresh(dish)
+
+    if not (dish.ingredients and dish.calories_estimate and dish.prep_time_minutes):
+        background_tasks.add_task(enrich_dish_background_task, dish.id)
 
     logger.info(
         "Recorded cook event for dish_id=%s rating=%s",
