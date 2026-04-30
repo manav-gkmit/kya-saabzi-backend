@@ -8,3 +8,4 @@ venv/
 .coverage
 postman
 .venv
+test.db

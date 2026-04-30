@@ -13,7 +13,7 @@ class DishEnrichmentResult(BaseModel):
 
 def enrich_dish_with_gemini(dish_name: str) -> DishEnrichmentResult | None:
     """Uses Google Gemini to fetch default ingredients, prep time, and calories for a given dish."""
-    if not getattr(settings, "GEMINI_API_KEY", None):
+    if not settings.GEMINI_API_KEY:
         logger.warning("GEMINI_API_KEY not configured. Skipping enrichment.")
         return None
         
@@ -43,7 +43,7 @@ def standardize_ingredients_with_gemini(ingredients: list[str]) -> list[str]:
     if not ingredients:
         return []
         
-    if not getattr(settings, "GEMINI_API_KEY", None):
+    if not settings.GEMINI_API_KEY:
         logger.warning("GEMINI_API_KEY not configured. Skipping ingredient standardization.")
         return [i.strip().lower() for i in ingredients]
         

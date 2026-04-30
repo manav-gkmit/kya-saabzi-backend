@@ -226,7 +226,7 @@ def enrich_dish_background_task(dish_id: UUID) -> None:
         if not dish:
             return
 
-        if dish.ingredients is not None and dish.calories_estimate is not None and dish.prep_time_minutes is not None:
+        if dish.ingredients and dish.calories_estimate is not None and dish.prep_time_minutes is not None:
             return
 
         logger.info(f"Triggering Gemini enrichment for dish: {dish.name}")
@@ -234,7 +234,7 @@ def enrich_dish_background_task(dish_id: UUID) -> None:
         if not result:
             return
 
-        if dish.ingredients is None and result.ingredients:
+        if not dish.ingredients and result.ingredients:
             _attach_ingredients_to_dish(db, dish, result.ingredients)
             
         if dish.calories_estimate is None and result.calories_estimate is not None:

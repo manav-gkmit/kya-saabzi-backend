@@ -52,8 +52,16 @@ class DishRead(DishBase):
     spiciness: int
     prep_time_minutes: int | None = None
     calories_estimate: int | None = None
+    ingredients: list[str] = []
     created_at: Timestamp
     updated_at: Timestamp
     deleted_at: Timestamp | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("ingredients", mode="before")
+    @classmethod
+    def extract_ingredient_names(cls, v: object) -> list[str]:
+        if not v:
+            return []
+        return [ing.name if hasattr(ing, "name") else str(ing) for ing in v]
