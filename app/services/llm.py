@@ -18,7 +18,7 @@ def enrich_dish_with_gemini(dish_name: str) -> DishEnrichmentResult | None:
         return None
         
     try:
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        client = genai.Client(api_key=settings.GEMINI_API_KEY.get_secret_value())
         prompt = f"Provide the core ingredients, estimated combined prep and cook time in minutes, and estimated calories per serving for the dish '{dish_name}'."
         
         response = client.models.generate_content(
@@ -48,7 +48,7 @@ def standardize_ingredients_with_gemini(ingredients: list[str]) -> list[str]:
         return [i.strip().lower() for i in ingredients]
         
     try:
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        client = genai.Client(api_key=settings.GEMINI_API_KEY.get_secret_value())
         prompt = f"Correct any spelling mistakes and standardize the following list of culinary ingredients into common base names: {ingredients}. Output a clean list of ingredients."
         
         response = client.models.generate_content(
