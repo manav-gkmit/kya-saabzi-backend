@@ -20,6 +20,10 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_FALLBACK_LIMIT = 50
 
+# Upper bound on candidate rows fetched from DB before Python-level similarity scoring.
+# Keeps memory usage O(1) regardless of table size.
+_SEARCH_CANDIDATE_LIMIT = 100
+
 
 def search_dishes(
     db: Session,
@@ -29,46 +33,48 @@ def search_dishes(
     limit: int = 5,
     offset: int = 0,
 ) -> list[dict]:
-    """Return dishes matching *query* using ILIKE + difflib fallback.
+    """Return dishes matching *query*, scored and sorted by similarity.
 
     Args:
         db: Active database session.
         query: Normalised (lower, stripped) search term.
         limit: Maximum results to return.
+        offset: Offset for pagination.
 
     Returns:
-        Sorted list of ``{"id", "name", "similarity"}`` dicts.
+        List of ``{"id", "name", "similarity"}`` dicts, sorted by similarity
+        descending.
+
+    Note:
+        At most ``_SEARCH_CANDIDATE_LIMIT`` rows are fetched from the database
+        before Python-level scoring.  ``offset`` and ``limit`` are applied to
+        the scored slice, so requesting an ``offset`` ≥ ``_SEARCH_CANDIDATE_LIMIT``
+        will return an empty list even if the ILIKE filter matches more records.
     """
     q_escaped = escape_like(query)
-    candidates = (
+    # Fetch a bounded candidate set from the database using ILIKE pre-filtering.
+    rows = (
         db.query(Dish.id, Dish.name)
         .filter(Dish.name.ilike(f"%{q_escaped}%", escape="\\"))
         .filter((Dish.household_id == household_id) | (Dish.household_id.is_(None)))
+        .limit(_SEARCH_CANDIDATE_LIMIT)
         .all()
     )
 
-    if not candidates:
-        candidates = (
-            db.query(Dish.id, Dish.name)
-            .filter((Dish.household_id == household_id) | (Dish.household_id.is_(None)))
-            .limit(DEFAULT_FALLBACK_LIMIT)
-            .all()
-        )
+    # Compute real similarity scores in Python against the bounded candidate set.
+    q_lower = query.lower()
+    scored: list[dict] = [
+        {
+            "id": dish_id,
+            "name": dish_name,
+            "similarity": difflib.SequenceMatcher(None, q_lower, dish_name.lower()).ratio(),
+        }
+        for dish_id, dish_name in rows
+    ]
 
-    results: list[dict] = []
-    for dish_id, dish_name in candidates:
-        # Compute similarity from normalized values to ignore case differences
-        similarity = difflib.SequenceMatcher(None, query, dish_name.lower()).ratio()
-        if similarity > 0.4:
-            results.append({
-                "id": dish_id,
-                "name": dish_name,
-                "similarity": similarity,
-            })
-
-    results.sort(key=lambda x: x["similarity"], reverse=True)
-    results = results[offset:]
-    return results[:limit]
+    # Sort by similarity descending, then apply pagination.
+    scored.sort(key=lambda x: x["similarity"], reverse=True)
+    return scored[offset : offset + limit]
 
 
 def find_or_create_dish(
@@ -101,37 +107,43 @@ def find_or_create_dish(
             db.flush()
         return dish
 
-    existing = db.query(Dish.id, Dish.name, Dish.household_id).filter(
+    # Targeted fuzzy matching: retrieve a small set of ILIKE matches to evaluate in-memory
+    # This prevents loading the entire table into memory.
+    q_escaped = escape_like(input_name)
+    candidates = db.query(Dish.id, Dish.name, Dish.household_id).filter(
+        Dish.name.ilike(f"%{q_escaped}%", escape="\\"),
         (Dish.household_id == household_id) | (Dish.household_id.is_(None))
-    ).all()
-    # Normalize candidate names for fuzzy matching; household-specific rows
-    # shadow global ones so a household override is always preferred.
+    ).order_by(Dish.household_id.is_(None), Dish.name).limit(10).all()
+    
     name_map: dict[str, Any] = {}
-    for d in existing:
+    for d in candidates:
         key = d.name.lower()
         if key not in name_map or (
             name_map[key].household_id is None and d.household_id is not None
         ):
             name_map[key] = d
-    close = difflib.get_close_matches(
-        input_name,
-        list(name_map.keys()),
-        n=1,
-        cutoff=0.85,
-    )
-    if close:
-        matched = name_map[close[0]]
-        dish = db.get(Dish, matched.id)
-        logger.info(
-            "Automatic typo correction: '%s' → '%s' (ID: %s)",
+            
+    if name_map:
+        close = difflib.get_close_matches(
             input_name,
-            matched.name,
-            matched.id,
+            list(name_map.keys()),
+            n=1,
+            cutoff=0.85,
         )
-        if ingredients and dish:
-            _attach_ingredients_to_dish(db, dish, ingredients)
-            db.flush()
-        return dish  # type: ignore[return-value]
+        if close:
+            matched = name_map[close[0]]
+            dish = db.get(Dish, matched.id)
+            if dish:
+                logger.info(
+                    "Automatic typo correction: '%s' → '%s' (ID: %s)",
+                    input_name,
+                    matched.name,
+                    matched.id,
+                )
+                if ingredients:
+                    _attach_ingredients_to_dish(db, dish, ingredients)
+                    db.flush()
+                return dish
 
     resolved_meal = meal_type or get_current_meal_type()
     
