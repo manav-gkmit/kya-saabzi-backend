@@ -119,16 +119,17 @@ def find_or_create_dish(
         if close:
             matched = name_map[close[0]]
             dish = db.get(Dish, matched.id)
-            logger.info(
-                "Automatic typo correction: '%s' → '%s' (ID: %s)",
-                input_name,
-                matched.name,
-                matched.id,
-            )
-            if ingredients and dish:
-                _attach_ingredients_to_dish(db, dish, ingredients)
-                db.flush()
-            return dish  # type: ignore[return-value]
+            if dish:
+                logger.info(
+                    "Automatic typo correction: '%s' → '%s' (ID: %s)",
+                    input_name,
+                    matched.name,
+                    matched.id,
+                )
+                if ingredients:
+                    _attach_ingredients_to_dish(db, dish, ingredients)
+                    db.flush()
+                return dish
 
     resolved_meal = meal_type or get_current_meal_type()
     
