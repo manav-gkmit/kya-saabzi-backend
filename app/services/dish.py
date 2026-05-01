@@ -99,7 +99,7 @@ def find_or_create_dish(
     candidates = db.query(Dish.id, Dish.name, Dish.household_id).filter(
         Dish.name.ilike(f"%{q_escaped}%", escape="\\"),
         (Dish.household_id == household_id) | (Dish.household_id.is_(None))
-    ).limit(10).all()
+    ).order_by(Dish.household_id.is_(None), Dish.name).limit(10).all()
     
     name_map: dict[str, Any] = {}
     for d in candidates:
