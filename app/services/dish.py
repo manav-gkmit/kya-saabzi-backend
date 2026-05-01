@@ -20,6 +20,10 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_FALLBACK_LIMIT = 50
 
+# Upper bound on candidate rows fetched from DB before Python-level similarity scoring.
+# Keeps memory usage O(1) regardless of table size.
+_SEARCH_CANDIDATE_LIMIT = 100
+
 
 def search_dishes(
     db: Session,
@@ -29,7 +33,7 @@ def search_dishes(
     limit: int = 5,
     offset: int = 0,
 ) -> list[dict]:
-    """Return dishes matching *query* using ILIKE.
+    """Return dishes matching *query*, scored and sorted by similarity.
 
     Args:
         db: Active database session.
@@ -38,29 +42,39 @@ def search_dishes(
         offset: Offset for pagination.
 
     Returns:
-        List of ``{"id", "name", "similarity"}`` dicts.
+        List of ``{"id", "name", "similarity"}`` dicts, sorted by similarity
+        descending.
+
+    Note:
+        At most ``_SEARCH_CANDIDATE_LIMIT`` rows are fetched from the database
+        before Python-level scoring.  ``offset`` and ``limit`` are applied to
+        the scored slice, so requesting an ``offset`` ≥ ``_SEARCH_CANDIDATE_LIMIT``
+        will return an empty list even if the ILIKE filter matches more records.
     """
     q_escaped = escape_like(query)
-    # Perform filtering and pagination entirely in the database
-    results_query = (
+    # Fetch a bounded candidate set from the database using ILIKE pre-filtering.
+    rows = (
         db.query(Dish.id, Dish.name)
         .filter(Dish.name.ilike(f"%{q_escaped}%", escape="\\"))
         .filter((Dish.household_id == household_id) | (Dish.household_id.is_(None)))
-        .order_by(Dish.name)
-        .offset(offset)
-        .limit(limit)
+        .limit(_SEARCH_CANDIDATE_LIMIT)
         .all()
     )
 
-    results: list[dict] = []
-    for dish_id, dish_name in results_query:
-        results.append({
+    # Compute real similarity scores in Python against the bounded candidate set.
+    q_lower = query.lower()
+    scored: list[dict] = [
+        {
             "id": dish_id,
             "name": dish_name,
-            "similarity": 1.0,  # Dummy value to maintain API compatibility
-        })
+            "similarity": difflib.SequenceMatcher(None, q_lower, dish_name.lower()).ratio(),
+        }
+        for dish_id, dish_name in rows
+    ]
 
-    return results
+    # Sort by similarity descending, then apply pagination.
+    scored.sort(key=lambda x: x["similarity"], reverse=True)
+    return scored[offset : offset + limit]
 
 
 def find_or_create_dish(
