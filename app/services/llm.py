@@ -30,6 +30,10 @@ def enrich_dish_with_gemini(dish_name: str) -> DishEnrichmentResult | None:
                 'response_schema': DishEnrichmentResult,
             },
         )
+        if not response or not response.text:
+            logger.warning("Gemini blocked/returned empty response for dish '%s'", dish_name)
+            return None
+            
         return DishEnrichmentResult.model_validate_json(response.text)
     except ValidationError as e:
         logger.error("Gemini returned invalid JSON schema for dish '%s': %s", dish_name, e)
@@ -66,6 +70,10 @@ def standardize_ingredients_with_gemini(ingredients: list[str]) -> list[str]:
                 'response_schema': IngredientStandardizationResult,
             },
         )
+        if not response or not response.text:
+            logger.warning("Gemini blocked/returned empty response for ingredients")
+            return [i.strip().lower() for i in ingredients]
+            
         result = IngredientStandardizationResult.model_validate_json(response.text)
         return result.standardized_ingredients
     except ValidationError as e:
