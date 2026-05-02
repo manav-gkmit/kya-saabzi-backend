@@ -1,6 +1,7 @@
 import logging
 from google import genai
-from pydantic import BaseModel, Field
+from google.genai import errors
+from pydantic import BaseModel, Field, ValidationError
 
 from app.config import settings
 
@@ -30,8 +31,14 @@ def enrich_dish_with_gemini(dish_name: str) -> DishEnrichmentResult | None:
             },
         )
         return DishEnrichmentResult.model_validate_json(response.text)
+    except ValidationError as e:
+        logger.error("Gemini returned invalid JSON schema for dish '%s': %s", dish_name, e)
+        return None
+    except errors.APIError as e:
+        logger.error("Gemini API error while enriching dish '%s': %s", dish_name, e)
+        return None
     except Exception as e:
-        logger.error("Failed to enrich dish '%s' via Gemini: %s", dish_name, e)
+        logger.exception("Unexpected error enriching dish '%s': %s", dish_name, e)
         return None
 
 
@@ -61,6 +68,12 @@ def standardize_ingredients_with_gemini(ingredients: list[str]) -> list[str]:
         )
         result = IngredientStandardizationResult.model_validate_json(response.text)
         return result.standardized_ingredients
+    except ValidationError as e:
+        logger.error("Gemini returned invalid JSON schema for ingredients: %s", e)
+        return [i.strip().lower() for i in ingredients]
+    except errors.APIError as e:
+        logger.error("Gemini API error while standardizing ingredients: %s", e)
+        return [i.strip().lower() for i in ingredients]
     except Exception as e:
-        logger.error("Failed to standardize ingredients via Gemini: %s", e)
+        logger.exception("Unexpected error standardizing ingredients: %s", e)
         return [i.strip().lower() for i in ingredients]
