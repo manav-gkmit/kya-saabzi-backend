@@ -2,6 +2,7 @@ import logging
 from google import genai
 from google.genai import errors
 from pydantic import BaseModel, Field, ValidationError
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from app.config import settings
 
@@ -12,6 +13,12 @@ class DishEnrichmentResult(BaseModel):
     prep_time_minutes: int | None = Field(description="Estimated prep and cook time combined in minutes")
     calories_estimate: int | None = Field(description="Estimated calories per serving")
 
+@retry(
+    retry=retry_if_exception_type(errors.APIError),
+    wait=wait_exponential(multiplier=1, min=2, max=30),
+    stop=stop_after_attempt(4),
+    reraise=True,
+)
 def enrich_dish_with_gemini(dish_name: str) -> DishEnrichmentResult | None:
     """Uses Google Gemini to fetch default ingredients, prep time, and calories for a given dish."""
     if not settings.GEMINI_API_KEY:
@@ -38,10 +45,10 @@ def enrich_dish_with_gemini(dish_name: str) -> DishEnrichmentResult | None:
     except ValidationError as e:
         logger.error("Gemini returned invalid JSON schema for dish '%s': %s", dish_name, e)
         return None
-    except errors.APIError as e:
-        logger.error("Gemini API error while enriching dish '%s': %s", dish_name, e)
-        return None
     except Exception as e:
+        if isinstance(e, errors.APIError):
+            logger.warning("Gemini API error (rate limit / server error), retrying for dish '%s': %s", dish_name, e)
+            raise e
         logger.exception("Unexpected error enriching dish '%s': %s", dish_name, e)
         return None
 
@@ -49,6 +56,12 @@ def enrich_dish_with_gemini(dish_name: str) -> DishEnrichmentResult | None:
 class IngredientStandardizationResult(BaseModel):
     standardized_ingredients: list[str] = Field(description="List of corrected and standardized ingredients, normalized to lowercase.")
 
+@retry(
+    retry=retry_if_exception_type(errors.APIError),
+    wait=wait_exponential(multiplier=1, min=2, max=30),
+    stop=stop_after_attempt(4),
+    reraise=True,
+)
 def standardize_ingredients_with_gemini(ingredients: list[str]) -> list[str]:
     """Uses Google Gemini to fix misspellings and standardize a list of ingredients."""
     if not ingredients:
@@ -79,9 +92,9 @@ def standardize_ingredients_with_gemini(ingredients: list[str]) -> list[str]:
     except ValidationError as e:
         logger.error("Gemini returned invalid JSON schema for ingredients: %s", e)
         return [i.strip().lower() for i in ingredients]
-    except errors.APIError as e:
-        logger.error("Gemini API error while standardizing ingredients: %s", e)
-        return [i.strip().lower() for i in ingredients]
     except Exception as e:
+        if isinstance(e, errors.APIError):
+            logger.warning("Gemini API error (rate limit / server error), retrying for ingredients: %s", e)
+            raise e
         logger.exception("Unexpected error standardizing ingredients: %s", e)
         return [i.strip().lower() for i in ingredients]
