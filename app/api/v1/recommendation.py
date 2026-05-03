@@ -4,10 +4,11 @@ import logging
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.database.db import get_db
+from app.utils.rate_limit import limiter
 from app.schemas.recommendation import RecommendationRead
 from app.services.recommendation import HybridRecoEngine
 from app.utils.auth import get_current_household
@@ -18,7 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_model=list[RecommendationRead])
+@limiter.limit("10/minute")
 def get_recommendation(
+    request: Request,
     meal_type: Literal["breakfast", "lunch", "dinner", "snack"] | None = None,
     household_id: uuid.UUID = Depends(get_current_household),
     db: Session = Depends(get_db),
