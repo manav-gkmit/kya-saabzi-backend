@@ -2,10 +2,11 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, status, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 
 from app.database.db import get_db
+from app.utils.rate_limit import limiter
 from app.models.users import User
 from app.schemas.dishes import DishCreate, DishRead, DishSearchResponse
 from app.services.dish import create_cook_log, find_or_create_dish, search_dishes, enrich_dish_background_task
@@ -16,7 +17,9 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/search", response_model=list[DishSearchResponse])
+@limiter.limit("20/minute")
 def search_dishes_endpoint(
+    request: Request,
     q: str,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -32,7 +35,9 @@ def search_dishes_endpoint(
 
 
 @router.post("/", response_model=DishRead)
+@limiter.limit("10/minute")
 def create_dish(
+    request: Request,
     dish_data: DishCreate,
     background_tasks: BackgroundTasks,
     user: User = Depends(get_current_user),
