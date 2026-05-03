@@ -2,11 +2,24 @@ import logging
 from google import genai
 from google.genai import errors
 from pydantic import BaseModel, Field, ValidationError
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+def is_transient_error(exc: BaseException) -> bool:
+    """Return True if the error is a server error or a rate limit (429)."""
+    if hasattr(errors, "ServerError") and isinstance(exc, errors.ServerError):
+        return True
+    if hasattr(errors, "RateLimitError") and isinstance(exc, errors.RateLimitError):
+        return True
+    if isinstance(exc, errors.APIError):
+        # google-genai may expose `code` or `status_code`
+        status = getattr(exc, "status_code", getattr(exc, "code", None))
+        if status == 429:
+            return True
+    return False
 
 class DishEnrichmentResult(BaseModel):
     ingredients: list[str] = Field(description="List of 5-8 core ingredients for the dish, normalized to lowercase.")
@@ -14,7 +27,7 @@ class DishEnrichmentResult(BaseModel):
     calories_estimate: int | None = Field(description="Estimated calories per serving")
 
 @retry(
-    retry=retry_if_exception_type(errors.APIError),
+    retry=retry_if_exception(is_transient_error),
     wait=wait_exponential(multiplier=1, min=2, max=30),
     stop=stop_after_attempt(4),
     reraise=True,
@@ -57,7 +70,7 @@ class IngredientStandardizationResult(BaseModel):
     standardized_ingredients: list[str] = Field(description="List of corrected and standardized ingredients, normalized to lowercase.")
 
 @retry(
-    retry=retry_if_exception_type(errors.APIError),
+    retry=retry_if_exception(is_transient_error),
     wait=wait_exponential(multiplier=1, min=2, max=30),
     stop=stop_after_attempt(4),
     reraise=True,
