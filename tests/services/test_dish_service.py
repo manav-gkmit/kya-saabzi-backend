@@ -15,7 +15,6 @@ from app.services.dish import (
     _attach_ingredients_to_dish,
     _enrich_dish_sync,
     create_cook_log,
-    enrich_dish_background_task,
     find_or_create_dish,
     search_dishes,
 )
@@ -413,3 +412,14 @@ class TestEnrichDishBackgroundTask:
             _enrich_dish_sync(uuid.uuid4())
             mock_db.rollback.assert_called_once()
             mock_db.close.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_async_wrapper_delegates_to_sync(self) -> None:
+        """Verify the async wrapper offloads to _enrich_dish_sync."""
+        import uuid
+        from app.services.dish import enrich_dish_background_task
+
+        dish_id = uuid.uuid4()
+        with patch("app.services.dish._enrich_dish_sync") as mock_sync:
+            await enrich_dish_background_task(dish_id)
+            mock_sync.assert_called_once_with(dish_id)
