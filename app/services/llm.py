@@ -1,4 +1,8 @@
+from __future__ import annotations
+
 import logging
+from functools import lru_cache
+
 from google import genai
 from google.genai import errors
 from pydantic import BaseModel, Field, ValidationError
@@ -7,6 +11,14 @@ from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponen
 from app.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def _get_gemini_client() -> genai.Client | None:
+    """Return a reusable Gemini client, or None if the key is not set."""
+    if not settings.GEMINI_API_KEY:
+        return None
+    return genai.Client(api_key=settings.GEMINI_API_KEY.get_secret_value())
 
 def is_transient_error(exc: BaseException) -> bool:
     """Return True if the error is a server error or a rate limit (429)."""
@@ -34,12 +46,12 @@ class DishEnrichmentResult(BaseModel):
 )
 def enrich_dish_with_gemini(dish_name: str) -> DishEnrichmentResult | None:
     """Uses Google Gemini to fetch default ingredients, prep time, and calories for a given dish."""
-    if not settings.GEMINI_API_KEY:
+    client = _get_gemini_client()
+    if client is None:
         logger.warning("GEMINI_API_KEY not configured. Skipping enrichment.")
         return None
         
     try:
-        client = genai.Client(api_key=settings.GEMINI_API_KEY.get_secret_value())
         prompt = f"Provide the core ingredients, estimated combined prep and cook time in minutes, and estimated calories per serving for the dish '{dish_name}'."
         
         response = client.models.generate_content(
@@ -80,12 +92,12 @@ def standardize_ingredients_with_gemini(ingredients: list[str]) -> list[str]:
     if not ingredients:
         return []
         
-    if not settings.GEMINI_API_KEY:
+    client = _get_gemini_client()
+    if client is None:
         logger.warning("GEMINI_API_KEY not configured. Skipping ingredient standardization.")
         return [i.strip().lower() for i in ingredients]
         
     try:
-        client = genai.Client(api_key=settings.GEMINI_API_KEY.get_secret_value())
         prompt = f"Correct any spelling mistakes and standardize the following list of culinary ingredients into common base names: {ingredients}. Output a clean list of ingredients."
         
         response = client.models.generate_content(
