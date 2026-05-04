@@ -1,6 +1,7 @@
 """Dish lookup, creation, and fuzzy-search business logic."""
 from __future__ import annotations
 
+import asyncio
 import difflib
 import logging
 from typing import Any
@@ -230,8 +231,8 @@ def create_cook_log(
     db.flush()
     return log
 
-def enrich_dish_background_task(dish_id: UUID) -> None:
-    """Background task to fetch missing dish data from Gemini."""
+def _enrich_dish_sync(dish_id: UUID) -> None:
+    """Synchronous enrichment logic — intended to run off the main thread."""
     db = SessionLocal()
     try:
         dish = db.get(Dish, dish_id)
@@ -241,7 +242,7 @@ def enrich_dish_background_task(dish_id: UUID) -> None:
         if dish.ingredients and dish.calories_estimate is not None and dish.prep_time_minutes is not None:
             return
 
-        logger.info(f"Triggering Gemini enrichment for dish: {dish.name}")
+        logger.info("Triggering Gemini enrichment for dish: %s", dish.name)
         result = enrich_dish_with_gemini(dish.name)
         if not result:
             return
@@ -256,9 +257,15 @@ def enrich_dish_background_task(dish_id: UUID) -> None:
             dish.prep_time_minutes = result.prep_time_minutes
 
         db.commit()
-        logger.info(f"Successfully enriched dish: {dish.name}")
+        logger.info("Successfully enriched dish: %s", dish.name)
     except Exception as e:
-        logger.error(f"Error in enrich_dish_background_task: {e}")
+        logger.error("Error in enrich_dish_background_task: %s", e)
         db.rollback()
     finally:
         db.close()
+
+
+async def enrich_dish_background_task(dish_id: UUID) -> None:
+    """Background task wrapper — offloads blocking Gemini I/O to a thread."""
+    await asyncio.to_thread(_enrich_dish_sync, dish_id)
+
