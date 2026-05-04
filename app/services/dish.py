@@ -108,11 +108,11 @@ def find_or_create_dish(
             db.flush()
         return dish
 
-    # Targeted fuzzy matching: retrieve a small set of ILIKE matches to evaluate in-memory
-    # This prevents loading the entire table into memory.
-    q_escaped = escape_like(input_name)
+    # Targeted fuzzy matching: use the first word for a broader ILIKE filter,
+    # then let difflib score the full name for precision.
+    first_word = escape_like(input_name.split()[0]) if input_name.strip() else escape_like(input_name)
     candidates = db.query(Dish.id, Dish.name, Dish.household_id).filter(
-        Dish.name.ilike(f"%{q_escaped}%", escape="\\"),
+        Dish.name.ilike(f"%{first_word}%", escape="\\"),
         (Dish.household_id == household_id) | (Dish.household_id.is_(None))
     ).order_by(Dish.household_id.is_(None), Dish.name).limit(10).all()
     
