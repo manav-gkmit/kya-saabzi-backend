@@ -110,7 +110,9 @@ def join_household(
 
 
 @router.post("/leave", response_model=HouseholdRead)
+@limiter.limit("5/minute")
 def leave_household(
+    request: Request,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
