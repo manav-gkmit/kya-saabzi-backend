@@ -11,7 +11,7 @@ from app.database.db import get_db
 from app.utils.auth import get_current_user
 from app.models.users import User
 from app.models.cooklogs import CookLog
-from app.utils.rate_limit import limiter
+from app.utils.rate_limit import limiter, get_user_id_or_ip
 
 
 router = APIRouter(prefix="/cooklogs", tags=["cooklogs"])
@@ -53,7 +53,7 @@ def get_cooklogs(
 
 
 @router.delete("/{cooklog_id}", status_code=status.HTTP_204_NO_CONTENT)
-@limiter.limit("10/minute")
+@limiter.limit("10/minute", key_func=get_user_id_or_ip)
 def delete_cooklog(
     request: Request,
     cooklog_id: uuid.UUID,
