@@ -17,7 +17,7 @@ from app.services.household import (
     update_household_preferences,
 )
 from app.utils.auth import get_current_household, get_current_user
-from app.utils.rate_limit import limiter
+from app.utils.rate_limit import get_user_id_or_ip, limiter
 
 router = APIRouter(prefix="/households", tags=["households"])
 
@@ -110,7 +110,9 @@ def join_household(
 
 
 @router.post("/leave", response_model=HouseholdRead)
+@limiter.limit("5/minute", key_func=get_user_id_or_ip)
 def leave_household(
+    request: Request,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

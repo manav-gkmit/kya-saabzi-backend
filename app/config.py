@@ -1,9 +1,10 @@
-from pydantic_settings import BaseSettings
 from pydantic import SecretStr
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
 
 class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     APP_NAME: str = "Kya Saabzi App"
     APP_VERSION: str = "1.0.0"
@@ -17,9 +18,6 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: SecretStr | None = None
 
     CORS_ORIGINS: list
-
-    class Config:
-        env_file = ".env"
 
 
 @lru_cache()

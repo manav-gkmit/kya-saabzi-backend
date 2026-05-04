@@ -13,8 +13,8 @@ from app.models.households import Household
 from app.models.users import User
 from app.services.dish import (
     _attach_ingredients_to_dish,
+    _enrich_dish_sync,
     create_cook_log,
-    enrich_dish_background_task,
     find_or_create_dish,
     search_dishes,
 )
@@ -354,7 +354,7 @@ class TestEnrichDishBackgroundTask:
             mock_db = MagicMock()
             mock_session_cls.return_value = mock_db
             mock_db.get.return_value = None
-            enrich_dish_background_task(uuid.uuid4())
+            _enrich_dish_sync(uuid.uuid4())
             mock_db.commit.assert_not_called()
 
     def test_skips_fully_enriched_dish(
@@ -374,7 +374,7 @@ class TestEnrichDishBackgroundTask:
             mock_session_cls.return_value = mock_db
             mock_db.get.return_value = dish
             with patch("app.services.dish.enrich_dish_with_gemini") as mock_llm:
-                enrich_dish_background_task(dish.id)
+                _enrich_dish_sync(dish.id)
                 mock_llm.assert_not_called()
 
     def test_enriches_dish_when_data_missing(
@@ -397,7 +397,7 @@ class TestEnrichDishBackgroundTask:
             mock_db.get.return_value = dish
             with patch("app.services.dish.enrich_dish_with_gemini", return_value=mock_result):
                 with patch("app.services.dish._attach_ingredients_to_dish") as mock_attach:
-                    enrich_dish_background_task(dish.id)
+                    _enrich_dish_sync(dish.id)
                     mock_attach.assert_called_once()
                     assert dish.calories_estimate == 200
                     assert dish.prep_time_minutes == 15
@@ -409,6 +409,17 @@ class TestEnrichDishBackgroundTask:
             mock_db = MagicMock()
             mock_session_cls.return_value = mock_db
             mock_db.get.side_effect = Exception("db error")
-            enrich_dish_background_task(uuid.uuid4())
+            _enrich_dish_sync(uuid.uuid4())
             mock_db.rollback.assert_called_once()
             mock_db.close.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_async_wrapper_delegates_to_sync(self) -> None:
+        """Verify the async wrapper offloads to _enrich_dish_sync."""
+        import uuid
+        from app.services.dish import enrich_dish_background_task
+
+        dish_id = uuid.uuid4()
+        with patch("app.services.dish._enrich_dish_sync") as mock_sync:
+            await enrich_dish_background_task(dish_id)
+            mock_sync.assert_called_once_with(dish_id)
