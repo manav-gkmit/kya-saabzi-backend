@@ -64,6 +64,7 @@ def update_my_household(
 
     db.commit()
     db.refresh(household)
+
     return household
 
 

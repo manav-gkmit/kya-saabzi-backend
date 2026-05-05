@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 
 from app.models.households import Household
 from app.models.users import User
-from app.services.llm import standardize_ingredients_with_gemini
 
 logger = logging.getLogger(__name__)
 
@@ -35,16 +34,14 @@ def update_household_preferences(
         household.name = name
 
     if preferences_patch:
-        if "avoid_ingredients" in preferences_patch:
-            preferences_patch["avoid_ingredients"] = standardize_ingredients_with_gemini(
-                preferences_patch["avoid_ingredients"]
-            )
-            
         current = household.preferences or {}
         household.preferences = {**current, **preferences_patch}
 
     db.flush()
     return household
+
+
+
 
 
 def create_private_household(
