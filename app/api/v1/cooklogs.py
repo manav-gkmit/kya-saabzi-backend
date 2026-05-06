@@ -76,7 +76,10 @@ def delete_cooklog(
     Returns:
         None: Responds with a 204 No Content status upon successful deletion.
     """
-    cooklog = db.query(CookLog).filter(CookLog.id == cooklog_id).first()
+    cooklog = db.query(CookLog).filter(
+        CookLog.id == cooklog_id,
+        CookLog.household_id == current_user.household_id,
+    ).first()
     
     if not cooklog or cooklog.deleted_at is not None:
         logger.warning("Cook log delete failed: not found cooklog_id=%s user_id=%s", cooklog_id, current_user.id)
