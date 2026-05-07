@@ -1,15 +1,15 @@
-from sqlalchemy import Column, String, ForeignKey
-from sqlalchemy.dialects.postgresql import JSONB, UUID
-from sqlalchemy.orm import relationship
-from .common import BaseModel
 import secrets
 import string
 
+from sqlalchemy import Column, ForeignKey, String
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.orm import relationship
+
+from .common import BaseModel
+
 
 def generate_invite_code():
-    return "".join(
-        secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8)
-    )
+    return "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
 
 
 class Household(BaseModel):
@@ -37,8 +37,6 @@ class Household(BaseModel):
         },
     )
 
-    users = relationship(
-        "User", back_populates="household", foreign_keys="User.household_id"
-    )
+    users = relationship("User", back_populates="household", foreign_keys="User.household_id")
     admin = relationship("User", foreign_keys="Household.admin_id")
     cooklogs = relationship("CookLog", back_populates="household")

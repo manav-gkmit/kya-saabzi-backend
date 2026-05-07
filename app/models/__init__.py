@@ -1,7 +1,5 @@
 # Comes handy for future alembic migrations
+from . import cooklogs, dishes, households, refresh_tokens, users
 from .common import Base
 
-from . import users, dishes, cooklogs, households, refresh_tokens
-
-
-__all__ = ["Base", "users", "dishes", "cooklogs", "households", "refresh_tokens"]
+__all__ = ["Base", "cooklogs", "dishes", "households", "refresh_tokens", "users"]

@@ -1,4 +1,5 @@
 """Tests for app.utils.security — bcrypt password hashing and verification."""
+
 from __future__ import annotations
 
 from app.utils.security import get_password_hash, verify_password

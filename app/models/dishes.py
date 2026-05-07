@@ -1,7 +1,8 @@
-from sqlalchemy import Column, String, Integer, Enum, Table, ForeignKey, CheckConstraint
+from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, String, Table
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-from .common import BaseModel, Base
+
+from .common import Base, BaseModel
 
 # Association table for Dish <-> Ingredient
 dish_ingredients = Table(
@@ -14,7 +15,9 @@ dish_ingredients = Table(
 
 class Dish(BaseModel):
     __tablename__ = "dishes"
-    __table_args__ = (CheckConstraint("spiciness >= 1 AND spiciness <= 5", name="check_spiciness_range"),)
+    __table_args__ = (
+        CheckConstraint("spiciness >= 1 AND spiciness <= 5", name="check_spiciness_range"),
+    )
 
     household_id = Column(
         UUID(as_uuid=True),
@@ -24,22 +27,24 @@ class Dish(BaseModel):
     )
 
     name = Column(String(255), nullable=False, index=True)
-    
+
     # Metadata for better recommendation
     dish_type = Column(
-        String(50), 
+        String(50),
         CheckConstraint("dish_type IN ('veg', 'non-veg', 'vegan')", name="check_dish_type"),
-        nullable=False, 
-        default="veg"
+        nullable=False,
+        default="veg",
     )
     meal_type = Column(
-        String(50), 
-        CheckConstraint("meal_type IN ('breakfast', 'lunch', 'dinner', 'snack')", name="check_meal_type"),
-        nullable=False, 
-        default="lunch"
+        String(50),
+        CheckConstraint(
+            "meal_type IN ('breakfast', 'lunch', 'dinner', 'snack')", name="check_meal_type"
+        ),
+        nullable=False,
+        default="lunch",
     )
-    spiciness = Column(Integer, nullable=False, default=1) # 1–5
-    prep_time_minutes = Column(Integer, nullable=True) # in minutes
+    spiciness = Column(Integer, nullable=False, default=1)  # 1–5
+    prep_time_minutes = Column(Integer, nullable=True)  # in minutes
     calories_estimate = Column(Integer, nullable=True)
 
     cooklogs = relationship("CookLog", back_populates="dish")
@@ -50,6 +55,6 @@ class Ingredient(BaseModel):
     __tablename__ = "ingredients"
 
     name = Column(String(255), nullable=False, unique=True, index=True)
-    category = Column(String(100), nullable=True) # vegetable, spice, protein, etc.
+    category = Column(String(100), nullable=True)  # vegetable, spice, protein, etc.
 
     dishes = relationship("Dish", secondary=dish_ingredients, back_populates="ingredients")

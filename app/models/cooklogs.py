@@ -1,6 +1,7 @@
-from sqlalchemy import Column, ForeignKey, String, Integer, CheckConstraint
+from sqlalchemy import CheckConstraint, Column, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
 from .common import BaseModel
 
 
@@ -28,9 +29,9 @@ class CookLog(BaseModel):
         nullable=False,
         index=True,
     )
-    
+
     note = Column(String, nullable=True)
-    rating = Column(Integer, nullable=True) # 1-5 rating for personalized reco weighting
+    rating = Column(Integer, nullable=True)  # 1-5 rating for personalized reco weighting
 
     dish = relationship("Dish", back_populates="cooklogs")
     household = relationship("Household", back_populates="cooklogs")

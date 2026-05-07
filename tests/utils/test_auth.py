@@ -1,4 +1,5 @@
 """Tests for app.utils.auth — get_current_user and get_current_household."""
+
 from __future__ import annotations
 
 import uuid
@@ -8,13 +9,13 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.users import User
-from app.utils.auth import get_current_user, get_current_household
+from app.utils.auth import get_current_household, get_current_user
 from app.utils.jwt import create_access_token
-
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 class _FakeCreds:
     """Minimal stand-in for HTTPAuthorizationCredentials."""
@@ -33,7 +34,9 @@ class TestGetCurrentUser:
     """Verify JWT-based user resolution."""
 
     def test_valid_token_returns_user(
-        self, db_session: Session, test_user: User,
+        self,
+        db_session: Session,
+        test_user: User,
     ) -> None:
         token = create_access_token(subject=str(test_user.id))
         user = get_current_user(creds=_FakeCreds(credentials=token), db=db_session)
@@ -57,6 +60,7 @@ class TestGetCurrentUser:
     def test_token_without_sub_raises_401(self, db_session: Session) -> None:
         """A token with no 'sub' claim should be rejected."""
         import jwt as pyjwt
+
         from app.config import settings
 
         token = pyjwt.encode(
@@ -78,6 +82,7 @@ class TestGetCurrentUser:
     def test_non_string_sub_raises_401(self, db_session: Session) -> None:
         """A token whose 'sub' is an integer (not a string) should be rejected."""
         import jwt as pyjwt
+
         from app.config import settings
 
         token = pyjwt.encode(

@@ -1,8 +1,8 @@
 from typing import Annotated
-from app.models.common import PasswordStr, Timestamp, Email
 
-from pydantic import BaseModel, StringConstraints, UUID4, EmailStr, ConfigDict
+from pydantic import UUID4, BaseModel, ConfigDict, EmailStr, StringConstraints
 
+from app.models.common import Email, PasswordStr, Timestamp
 
 Username = Annotated[
     str,

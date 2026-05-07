@@ -1,14 +1,11 @@
 """Integration tests for /api/v1/auth endpoints."""
+
 from __future__ import annotations
 
-import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
 from app.models.households import Household
-from app.models.users import User
-from app.utils.tokens import create_refresh_token
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -54,7 +51,10 @@ class TestRegister:
         assert body["household_id"] is not None
 
     def test_register_with_invite_code(
-        self, client: TestClient, db_session: Session, test_household: Household,
+        self,
+        client: TestClient,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         resp = _register(
             client,
@@ -161,7 +161,9 @@ class TestLogout:
         assert resp.status_code == 204
 
     def test_logout_all_sessions(
-        self, client: TestClient, auth_headers: dict,
+        self,
+        client: TestClient,
+        auth_headers: dict,
     ) -> None:
         resp = client.post(LOGOUT_ALL_URL, headers=auth_headers)
         assert resp.status_code == 204

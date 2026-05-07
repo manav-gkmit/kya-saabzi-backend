@@ -13,10 +13,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         bool: True if the password is valid, False otherwise.
     """
     try:
-        return bcrypt.checkpw(
-            plain_password.encode("utf-8"),
-            hashed_password.encode("utf-8")
-        )
+        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
     except (ValueError, TypeError):
         return False
 

@@ -1,4 +1,5 @@
 """Tests for app.services.dish — search, find-or-create, cook log creation."""
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
@@ -7,7 +8,6 @@ from uuid import UUID
 import pytest
 from sqlalchemy.orm import Session
 
-from app.models.cooklogs import CookLog
 from app.models.dishes import Dish, Ingredient
 from app.models.households import Household
 from app.models.users import User
@@ -19,10 +19,10 @@ from app.services.dish import (
     search_dishes,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _seed_dish(
     db: Session,
@@ -45,7 +45,9 @@ class TestSearchDishes:
     """Verify ILIKE + difflib fallback search pipeline."""
 
     def test_ilike_match_returns_results(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         _seed_dish(db_session, "dal makhani", test_household.id)
         _seed_dish(db_session, "dal tadka", test_household.id)
@@ -56,7 +58,9 @@ class TestSearchDishes:
         assert all(r["similarity"] > 0.4 for r in results)
 
     def test_results_sorted_by_similarity(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         _seed_dish(db_session, "palak paneer", test_household.id)
         _seed_dish(db_session, "paneer butter masala", test_household.id)
@@ -67,7 +71,9 @@ class TestSearchDishes:
             assert results[0]["similarity"] >= results[1]["similarity"]
 
     def test_low_similarity_filtered_out(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         _seed_dish(db_session, "aloo gobi", test_household.id)
         db_session.commit()
@@ -76,7 +82,9 @@ class TestSearchDishes:
         assert len(results) == 0
 
     def test_household_scope_includes_global(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         """Global dishes (household_id=None) should be visible."""
         _seed_dish(db_session, "chole bhature", household_id=None)
@@ -87,7 +95,10 @@ class TestSearchDishes:
         assert len(results) == 2
 
     def test_other_household_dishes_excluded(
-        self, db_session: Session, test_household: Household, other_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
+        other_household: Household,
     ) -> None:
         _seed_dish(db_session, "biryani", other_household.id)
         db_session.commit()
@@ -96,29 +107,43 @@ class TestSearchDishes:
         assert len(results) == 0
 
     def test_pagination_limit(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         for i in range(5):
             _seed_dish(db_session, f"dish {i}", test_household.id)
         db_session.commit()
 
         results = search_dishes(
-            db_session, "dish", household_id=test_household.id, limit=2,
+            db_session,
+            "dish",
+            household_id=test_household.id,
+            limit=2,
         )
         assert len(results) == 2
 
     def test_pagination_offset(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         for i in range(5):
             _seed_dish(db_session, f"dish {i}", test_household.id)
         db_session.commit()
 
         all_results = search_dishes(
-            db_session, "dish", household_id=test_household.id, limit=10,
+            db_session,
+            "dish",
+            household_id=test_household.id,
+            limit=10,
         )
         offset_results = search_dishes(
-            db_session, "dish", household_id=test_household.id, limit=10, offset=2,
+            db_session,
+            "dish",
+            household_id=test_household.id,
+            limit=10,
+            offset=2,
         )
         assert len(offset_results) == len(all_results) - 2
 
@@ -132,32 +157,44 @@ class TestFindOrCreateDish:
     """Verify exact-match → fuzzy-match → create pipeline."""
 
     def test_exact_match_returns_existing(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         existing = _seed_dish(db_session, "rajma chawal", test_household.id)
         db_session.commit()
 
         result = find_or_create_dish(
-            db_session, "Rajma Chawal", household_id=test_household.id,
+            db_session,
+            "Rajma Chawal",
+            household_id=test_household.id,
         )
         assert result.id == existing.id
 
     def test_fuzzy_match_corrects_typo(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         existing = _seed_dish(db_session, "palak paneer", test_household.id)
         db_session.commit()
 
         result = find_or_create_dish(
-            db_session, "palak paner", household_id=test_household.id,
+            db_session,
+            "palak paner",
+            household_id=test_household.id,
         )
         assert result.id == existing.id
 
     def test_no_match_creates_new(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         result = find_or_create_dish(
-            db_session, "unique new dish", household_id=test_household.id,
+            db_session,
+            "unique new dish",
+            household_id=test_household.id,
         )
         db_session.commit()
 
@@ -166,29 +203,40 @@ class TestFindOrCreateDish:
         assert fetched is not None
 
     def test_household_dish_shadows_global(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         global_dish = _seed_dish(db_session, "dal fry", household_id=None)
         hh_dish = _seed_dish(db_session, "dal fry", test_household.id)
         db_session.commit()
 
         result = find_or_create_dish(
-            db_session, "dal fry", household_id=test_household.id,
+            db_session,
+            "dal fry",
+            household_id=test_household.id,
         )
         assert result.id == hh_dish.id
 
     @patch("app.services.dish.get_current_meal_type", return_value="dinner")
     def test_defaults_meal_type_from_time(
-        self, mock_meal, db_session: Session, test_household: Household,
+        self,
+        mock_meal,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         result = find_or_create_dish(
-            db_session, "brand new dish", household_id=test_household.id,
+            db_session,
+            "brand new dish",
+            household_id=test_household.id,
         )
         db_session.commit()
         assert result.meal_type == "dinner"
 
     def test_explicit_meal_type_used(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         result = find_or_create_dish(
             db_session,
@@ -200,7 +248,9 @@ class TestFindOrCreateDish:
         assert result.meal_type == "breakfast"
 
     def test_optional_fields_applied(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         result = find_or_create_dish(
             db_session,
@@ -227,7 +277,10 @@ class TestCreateCookLog:
     """Verify cook log persistence."""
 
     def test_creates_log_with_all_fields(
-        self, db_session: Session, test_user: User, test_household: Household,
+        self,
+        db_session: Session,
+        test_user: User,
+        test_household: Household,
     ) -> None:
         dish = _seed_dish(db_session, "test dish", test_household.id)
         db_session.commit()
@@ -248,7 +301,10 @@ class TestCreateCookLog:
         assert log.rating == 5
 
     def test_optional_fields_nullable(
-        self, db_session: Session, test_user: User, test_household: Household,
+        self,
+        db_session: Session,
+        test_user: User,
+        test_household: Household,
     ) -> None:
         dish = _seed_dish(db_session, "basic dish", test_household.id)
         db_session.commit()
@@ -265,7 +321,10 @@ class TestCreateCookLog:
         assert log.rating is None
 
     def test_flush_without_commit(
-        self, db_session: Session, test_user: User, test_household: Household,
+        self,
+        db_session: Session,
+        test_user: User,
+        test_household: Household,
     ) -> None:
         """create_cook_log only flushes — caller is responsible for commit."""
         dish = _seed_dish(db_session, "flush test", test_household.id)
@@ -290,7 +349,9 @@ class TestAttachIngredients:
     """Verify ingredient creation and attachment logic."""
 
     def test_creates_new_ingredients(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         dish = _seed_dish(db_session, "test dish", test_household.id)
         db_session.commit()
@@ -302,7 +363,9 @@ class TestAttachIngredients:
         assert names == {"spinach", "paneer"}
 
     def test_reuses_existing_ingredients(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         existing = Ingredient(name="garlic")
         db_session.add(existing)
@@ -316,7 +379,9 @@ class TestAttachIngredients:
         assert dish.ingredients[0].id == existing.id
 
     def test_no_duplicates_on_repeated_call(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         dish = _seed_dish(db_session, "dup dish", test_household.id)
         db_session.commit()
@@ -329,7 +394,9 @@ class TestAttachIngredients:
         assert len(dish.ingredients) == 1
 
     def test_empty_list_is_noop(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         dish = _seed_dish(db_session, "empty dish", test_household.id)
         db_session.commit()
@@ -350,6 +417,7 @@ class TestEnrichDishBackgroundTask:
 
     def test_skips_nonexistent_dish(self) -> None:
         import uuid
+
         with patch("app.services.dish.SessionLocal") as mock_session_cls:
             mock_db = MagicMock()
             mock_session_cls.return_value = mock_db
@@ -358,7 +426,9 @@ class TestEnrichDishBackgroundTask:
             mock_db.commit.assert_not_called()
 
     def test_skips_fully_enriched_dish(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         dish = _seed_dish(db_session, "full dish", test_household.id)
         ing = Ingredient(name="onion")
@@ -378,7 +448,9 @@ class TestEnrichDishBackgroundTask:
                 mock_llm.assert_not_called()
 
     def test_enriches_dish_when_data_missing(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         dish = _seed_dish(db_session, "bare dish", test_household.id)
         db_session.commit()
@@ -405,6 +477,7 @@ class TestEnrichDishBackgroundTask:
 
     def test_rolls_back_on_exception(self) -> None:
         import uuid
+
         with patch("app.services.dish.SessionLocal") as mock_session_cls:
             mock_db = MagicMock()
             mock_session_cls.return_value = mock_db
@@ -417,6 +490,7 @@ class TestEnrichDishBackgroundTask:
     async def test_async_wrapper_delegates_to_sync(self) -> None:
         """Verify the async wrapper offloads to _enrich_dish_sync."""
         import uuid
+
         from app.services.dish import enrich_dish_background_task
 
         dish_id = uuid.uuid4()

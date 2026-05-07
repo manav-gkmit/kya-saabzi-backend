@@ -1,4 +1,5 @@
 """Tests for app.utils.jwt — access token creation and decoding (PyJWT)."""
+
 from __future__ import annotations
 
 import time
@@ -22,7 +23,9 @@ class TestCreateAccessToken:
     def test_payload_contains_sub_iat_exp(self) -> None:
         token = create_access_token(subject="user-123")
         payload = pyjwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM],
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
         )
         assert payload["sub"] == "user-123"
         assert "iat" in payload
@@ -32,7 +35,9 @@ class TestCreateAccessToken:
         delta = timedelta(minutes=5)
         token = create_access_token(subject="u", expires_delta=delta)
         payload = pyjwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM],
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
         )
         # exp - iat should be ~300 seconds
         assert abs((payload["exp"] - payload["iat"]) - 300) < 2
@@ -40,7 +45,9 @@ class TestCreateAccessToken:
     def test_include_jti_adds_claim(self) -> None:
         token = create_access_token(subject="u", include_jti=True)
         payload = pyjwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM],
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
         )
         assert "jti" in payload
         assert len(payload["jti"]) > 0
@@ -48,7 +55,9 @@ class TestCreateAccessToken:
     def test_no_jti_by_default(self) -> None:
         token = create_access_token(subject="u")
         payload = pyjwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM],
+            token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
         )
         assert "jti" not in payload
 

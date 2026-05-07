@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict
+
 from .dishes import DishRead
 
 
