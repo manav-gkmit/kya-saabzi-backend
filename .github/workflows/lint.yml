@@ -33,7 +33,7 @@ jobs:
   lint-autofix:
     name: Ruff Lint & Auto-fix
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
+    if: github.event_name == 'push' && !contains(github.event.head_commit.message, '[skip ci]')
     permissions:
       contents: write
     steps:
@@ -59,7 +59,7 @@ jobs:
       - name: Commit lint fixes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "style: auto-fix lint via Ruff"
+          commit_message: "style: auto-fix lint via Ruff [skip ci]"
           commit_author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
 
       - name: Check for remaining issues
