@@ -25,7 +25,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install Ruff
-        run: pip install "ruff>=0.11.0"
+        run: pip install "ruff==0.11.0"
 
       - name: Ruff fix (lint + import sort + unused imports)
         run: ruff check . --fix || true
