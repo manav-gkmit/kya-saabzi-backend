@@ -1,4 +1,5 @@
 """Dish lookup, creation, and fuzzy-search business logic."""
+
 from __future__ import annotations
 
 import asyncio
@@ -97,10 +98,15 @@ def find_or_create_dish(
     """
     input_name = name.lower().strip()
 
-    dish = db.query(Dish).filter(
-        func.lower(Dish.name) == input_name,
-        (Dish.household_id == household_id) | (Dish.household_id.is_(None))
-    ).order_by(Dish.household_id.is_(None)).first()
+    dish = (
+        db.query(Dish)
+        .filter(
+            func.lower(Dish.name) == input_name,
+            (Dish.household_id == household_id) | (Dish.household_id.is_(None)),
+        )
+        .order_by(Dish.household_id.is_(None))
+        .first()
+    )
     if dish:
         logger.debug("Using existing dish: %s", dish.name)
         if ingredients:
@@ -110,12 +116,20 @@ def find_or_create_dish(
 
     # Targeted fuzzy matching: use the first word for a broader ILIKE filter,
     # then let difflib score the full name for precision.
-    first_word = escape_like(input_name.split()[0]) if input_name.strip() else escape_like(input_name)
-    candidates = db.query(Dish.id, Dish.name, Dish.household_id).filter(
-        Dish.name.ilike(f"%{first_word}%", escape="\\"),
-        (Dish.household_id == household_id) | (Dish.household_id.is_(None))
-    ).order_by(Dish.household_id.is_(None), Dish.name).limit(10).all()
-    
+    first_word = (
+        escape_like(input_name.split()[0]) if input_name.strip() else escape_like(input_name)
+    )
+    candidates = (
+        db.query(Dish.id, Dish.name, Dish.household_id)
+        .filter(
+            Dish.name.ilike(f"%{first_word}%", escape="\\"),
+            (Dish.household_id == household_id) | (Dish.household_id.is_(None)),
+        )
+        .order_by(Dish.household_id.is_(None), Dish.name)
+        .limit(10)
+        .all()
+    )
+
     name_map: dict[str, Any] = {}
     for d in candidates:
         key = d.name.lower()
@@ -123,7 +137,7 @@ def find_or_create_dish(
             name_map[key].household_id is None and d.household_id is not None
         ):
             name_map[key] = d
-            
+
     if name_map:
         close = difflib.get_close_matches(
             input_name,
@@ -147,7 +161,7 @@ def find_or_create_dish(
                 return dish
 
     resolved_meal = meal_type or get_current_meal_type()
-    
+
     # Avoid passing None for columns with nullable=False to use DB defaults
     dish_kwargs = {
         "name": input_name,
@@ -167,7 +181,7 @@ def find_or_create_dish(
     db.add(dish)
     db.flush()
     logger.info("Created new canonical dish: %s", input_name)
-    
+
     if ingredients:
         _attach_ingredients_to_dish(db, dish, ingredients)
         db.flush()
@@ -182,21 +196,21 @@ def _attach_ingredients_to_dish(db: Session, dish: Dish, ingredient_names: list[
         return
 
     # Find existing ingredients
-    existing_ingredients = db.query(Ingredient).filter(
-        func.lower(Ingredient.name).in_(normalized_names)
-    ).all()
-    
+    existing_ingredients = (
+        db.query(Ingredient).filter(func.lower(Ingredient.name).in_(normalized_names)).all()
+    )
+
     existing_map = {ing.name.lower(): ing for ing in existing_ingredients}
-    
+
     # Identify which ones need to be created
     to_create = normalized_names - set(existing_map.keys())
-    
+
     new_ingredients = []
     for name in to_create:
         ing = Ingredient(name=name)
         new_ingredients.append(ing)
         db.add(ing)
-        
+
     if new_ingredients:
         db.flush()
         for ing in new_ingredients:
@@ -204,7 +218,7 @@ def _attach_ingredients_to_dish(db: Session, dish: Dish, ingredient_names: list[
 
     # Identify currently linked ingredients to avoid duplication
     current_ingredient_names = {ing.name.lower() for ing in dish.ingredients}
-    
+
     for name in normalized_names:
         if name not in current_ingredient_names:
             dish.ingredients.append(existing_map[name])
@@ -231,6 +245,7 @@ def create_cook_log(
     db.flush()
     return log
 
+
 def _enrich_dish_sync(dish_id: UUID) -> None:
     """Synchronous enrichment logic — intended to run off the main thread."""
     db = SessionLocal()
@@ -239,7 +254,11 @@ def _enrich_dish_sync(dish_id: UUID) -> None:
         if not dish:
             return
 
-        if dish.ingredients and dish.calories_estimate is not None and dish.prep_time_minutes is not None:
+        if (
+            dish.ingredients
+            and dish.calories_estimate is not None
+            and dish.prep_time_minutes is not None
+        ):
             return
 
         logger.info("Triggering Gemini enrichment for dish: %s", dish.name)
@@ -249,10 +268,10 @@ def _enrich_dish_sync(dish_id: UUID) -> None:
 
         if not dish.ingredients and result.ingredients:
             _attach_ingredients_to_dish(db, dish, result.ingredients)
-            
+
         if dish.calories_estimate is None and result.calories_estimate is not None:
             dish.calories_estimate = result.calories_estimate
-            
+
         if dish.prep_time_minutes is None and result.prep_time_minutes is not None:
             dish.prep_time_minutes = result.prep_time_minutes
 
@@ -268,4 +287,3 @@ def _enrich_dish_sync(dish_id: UUID) -> None:
 async def enrich_dish_background_task(dish_id: UUID) -> None:
     """Background task wrapper — offloads blocking Gemini I/O to a thread."""
     await asyncio.to_thread(_enrich_dish_sync, dish_id)
-

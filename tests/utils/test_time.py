@@ -1,7 +1,8 @@
 """Tests for app.utils.time — meal type resolution from hour of day."""
+
 from __future__ import annotations
 
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 
@@ -32,17 +33,17 @@ class TestGetCurrentMealType:
         ],
     )
     def test_hour_to_meal_mapping(self, hour: int, expected: str) -> None:
-        dt = datetime(2026, 1, 1, hour, 0, tzinfo=timezone.utc)
+        dt = datetime(2026, 1, 1, hour, 0, tzinfo=UTC)
         assert get_current_meal_type(reference_dt=dt) == expected
 
     def test_with_reference_dt(self) -> None:
-        morning = datetime(2026, 6, 15, 8, 30, tzinfo=timezone.utc)
+        morning = datetime(2026, 6, 15, 8, 30, tzinfo=UTC)
         assert get_current_meal_type(reference_dt=morning) == "breakfast"
 
     def test_with_user_tz_converts(self) -> None:
         """A UTC time of 03:00 is 08:30 in IST (+05:30) → breakfast."""
         ist = timezone(timedelta(hours=5, minutes=30))
-        utc_time = datetime(2026, 1, 1, 3, 0, tzinfo=timezone.utc)
+        utc_time = datetime(2026, 1, 1, 3, 0, tzinfo=UTC)
         result = get_current_meal_type(reference_dt=utc_time, user_tz=ist)
         assert result == "breakfast"
 

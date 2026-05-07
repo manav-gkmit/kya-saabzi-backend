@@ -1,6 +1,7 @@
-from sqlalchemy import String, Column, ForeignKey
+from sqlalchemy import Column, ForeignKey, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
 from .common import BaseModel
 
 
@@ -10,7 +11,7 @@ class User(BaseModel):
     email = Column(String(255), nullable=False, unique=True)
     username = Column(String(50), nullable=False, unique=True, index=True)
     hashed_password = Column(String(255), nullable=False)
-    
+
     # Connect to a multi-tenant household
     household_id = Column(
         UUID(as_uuid=True),
@@ -18,6 +19,4 @@ class User(BaseModel):
         nullable=False,
         index=True,
     )
-    household = relationship(
-        "Household", back_populates="users", foreign_keys="User.household_id"
-    )
+    household = relationship("Household", back_populates="users", foreign_keys="User.household_id")

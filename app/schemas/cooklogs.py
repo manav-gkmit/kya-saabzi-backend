@@ -1,6 +1,7 @@
-from pydantic import BaseModel, UUID4, ConfigDict
+from pydantic import UUID4, BaseModel, ConfigDict
 
 from app.models.common import Timestamp
+
 from .dishes import DishBase
 
 

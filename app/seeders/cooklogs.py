@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm import Session
 
@@ -28,7 +28,7 @@ def seed_cooklogs(*, db: Session | None = None) -> None:
         if not users or not dishes:
             raise RuntimeError("Seed users and dishes before seeding cooklogs.")
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         cooklogs: list[CookLog] = []
         for i in range(10):
             user = users[i % len(users)]

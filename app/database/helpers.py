@@ -1,4 +1,5 @@
 """Database query helpers (SQL escaping, etc.)."""
+
 from __future__ import annotations
 
 
@@ -17,8 +18,7 @@ def escape_like(value: str, escape_char: str = "\\") -> str:
         The escaped string, safe to interpolate into a ``%{value}%`` pattern.
     """
     return (
-        value
-        .replace(escape_char, escape_char * 2)
+        value.replace(escape_char, escape_char * 2)
         .replace("%", f"{escape_char}%")
         .replace("_", f"{escape_char}_")
     )

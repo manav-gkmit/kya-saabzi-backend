@@ -1,10 +1,11 @@
 """Hybrid recommendation engine — scoring and ranking logic."""
+
 from __future__ import annotations
 
 import logging
 import random
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
@@ -48,7 +49,7 @@ class HybridRecoEngine:
     def _fetch_candidates(self, meal_type: str) -> list[Dish]:
         query = self._db.query(Dish).filter(
             Dish.meal_type == meal_type,
-            (Dish.household_id == self._household_id) | (Dish.household_id.is_(None))
+            (Dish.household_id == self._household_id) | (Dish.household_id.is_(None)),
         )
 
         prefs = self._prefs()
@@ -57,13 +58,12 @@ class HybridRecoEngine:
 
         avoid_ingredients = prefs.get("avoid_ingredients")
         if avoid_ingredients:
-            from app.models.dishes import Ingredient
             from sqlalchemy import func
-            
+
+            from app.models.dishes import Ingredient
+
             avoid_list = [
-                i.strip().lower() 
-                for i in avoid_ingredients 
-                if isinstance(i, str) and i.strip()
+                i.strip().lower() for i in avoid_ingredients if isinstance(i, str) and i.strip()
             ]
             if avoid_list:
                 query = query.filter(
@@ -92,7 +92,7 @@ class HybridRecoEngine:
             return candidates
 
         window = self._safe_window(prefs)
-        threshold = datetime.now(timezone.utc) - timedelta(days=window)
+        threshold = datetime.now(UTC) - timedelta(days=window)
 
         recent_ids = {
             row[0]
@@ -112,7 +112,7 @@ class HybridRecoEngine:
         self,
         dishes: list[Dish],
     ) -> list[tuple[Dish, dict]]:
-        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+        thirty_days_ago = datetime.now(UTC) - timedelta(days=30)
         dish_ids = [d.id for d in dishes]
 
         if not dish_ids:
@@ -155,12 +155,17 @@ class HybridRecoEngine:
 
             total = (pop_score * 0.2) + (hist_score * 0.5) + (rand_score * 0.3)
 
-            scored.append((d, {
-                "popularity": round(pop_score, 2),
-                "history": round(hist_score, 2),
-                "randomness": round(rand_score, 2),
-                "total": round(total, 2),
-            }))
+            scored.append(
+                (
+                    d,
+                    {
+                        "popularity": round(pop_score, 2),
+                        "history": round(hist_score, 2),
+                        "randomness": round(rand_score, 2),
+                        "total": round(total, 2),
+                    },
+                )
+            )
 
         scored.sort(key=lambda x: x[1]["total"], reverse=True)
         return scored

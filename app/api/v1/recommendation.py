@@ -8,10 +8,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.database.db import get_db
-from app.utils.rate_limit import limiter
 from app.schemas.recommendation import RecommendationRead
 from app.services.recommendation import HybridRecoEngine
 from app.utils.auth import get_current_household
+from app.utils.rate_limit import limiter
 from app.utils.time import get_current_meal_type
 
 router = APIRouter(prefix="/recommend", tags=["recommendation"])

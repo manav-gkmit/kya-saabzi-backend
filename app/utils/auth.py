@@ -1,4 +1,5 @@
 """FastAPI dependencies for authentication and household resolution."""
+
 from __future__ import annotations
 
 import uuid

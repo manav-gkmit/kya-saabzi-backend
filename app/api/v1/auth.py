@@ -22,7 +22,6 @@ from app.utils.tokens import (
     validate_and_rotate,
 )
 
-
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
 
@@ -30,6 +29,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _fingerprint_identifier(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()[:12]
@@ -43,6 +43,7 @@ def _throw_conflict(detail: str, fingerprint: str) -> NoReturn:
 # ---------------------------------------------------------------------------
 # Registration
 # ---------------------------------------------------------------------------
+
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")
@@ -64,9 +65,7 @@ def register_user(
     # 1. Resolve household
     if user_data.invite_code:
         invite_code = user_data.invite_code.upper().strip()
-        household = (
-            db.query(Household).filter(Household.invite_code == invite_code).first()
-        )
+        household = db.query(Household).filter(Household.invite_code == invite_code).first()
         if not household:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -103,6 +102,7 @@ def register_user(
 # ---------------------------------------------------------------------------
 # Login / Refresh / Logout
 # ---------------------------------------------------------------------------
+
 
 @router.post("/login", response_model=Token)
 @limiter.limit("5/minute")
@@ -195,6 +195,7 @@ def logout_all_sessions(
 # ---------------------------------------------------------------------------
 # Profile
 # ---------------------------------------------------------------------------
+
 
 @router.get("/me", response_model=UserRead)
 def get_current_user_profile(

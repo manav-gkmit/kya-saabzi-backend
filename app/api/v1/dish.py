@@ -2,15 +2,20 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, BackgroundTasks, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from app.database.db import get_db
-from app.utils.rate_limit import limiter
 from app.models.users import User
 from app.schemas.dishes import DishCreate, DishRead, DishSearchResponse
-from app.services.dish import create_cook_log, find_or_create_dish, search_dishes, enrich_dish_background_task
+from app.services.dish import (
+    create_cook_log,
+    enrich_dish_background_task,
+    find_or_create_dish,
+    search_dishes,
+)
 from app.utils.auth import get_current_user
+from app.utils.rate_limit import limiter
 
 router = APIRouter(prefix="/dishes", tags=["dishes"])
 logger = logging.getLogger(__name__)

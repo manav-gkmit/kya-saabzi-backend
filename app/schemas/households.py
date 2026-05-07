@@ -1,5 +1,7 @@
 from typing import Any
-from pydantic import BaseModel, UUID4, Field, field_validator, ConfigDict
+
+from pydantic import UUID4, BaseModel, ConfigDict, Field, field_validator
+
 from app.models.common import Timestamp
 
 

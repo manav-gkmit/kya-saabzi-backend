@@ -2,7 +2,7 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.database.db import get_db
@@ -76,7 +76,9 @@ def get_household_members(
     offset: int = Query(default=0, ge=0),
 ):
     """List all users belonging to the current household."""
-    return db.query(User).filter(User.household_id == household_id).limit(limit).offset(offset).all()
+    return (
+        db.query(User).filter(User.household_id == household_id).limit(limit).offset(offset).all()
+    )
 
 
 @router.post("/join", response_model=HouseholdRead)
@@ -88,11 +90,7 @@ def join_household(
     db: Session = Depends(get_db),
 ):
     """Join an existing household using a short invite code."""
-    target = (
-        db.query(Household)
-        .filter(Household.invite_code == join_data.invite_code)
-        .first()
-    )
+    target = db.query(Household).filter(Household.invite_code == join_data.invite_code).first()
     if not target:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -121,9 +119,7 @@ def leave_household(
     old_household_id = user.household_id
 
     other_members = (
-        db.query(User)
-        .filter(User.household_id == old_household_id, User.id != user.id)
-        .count()
+        db.query(User).filter(User.household_id == old_household_id, User.id != user.id).count()
     )
     if other_members == 0:
         return db.get(Household, old_household_id)
@@ -161,11 +157,7 @@ def remove_household_member(
             detail="You cannot remove yourself. Use the /leave endpoint instead.",
         )
 
-    member = (
-        db.query(User)
-        .filter(User.id == member_id, User.household_id == household.id)
-        .first()
-    )
+    member = db.query(User).filter(User.id == member_id, User.household_id == household.id).first()
     if not member:
         raise HTTPException(status_code=404, detail="Member not found in your household")
 

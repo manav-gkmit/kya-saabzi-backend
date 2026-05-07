@@ -1,9 +1,9 @@
 import uuid
+from datetime import UTC, datetime
 from typing import Annotated
-from datetime import datetime, timezone
 
-from pydantic import StringConstraints, EmailStr
-from sqlalchemy import Column, TIMESTAMP
+from pydantic import EmailStr, StringConstraints
+from sqlalchemy import TIMESTAMP, Column
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase
 
@@ -24,13 +24,11 @@ class BaseModel(Base):
     __abstract__ = True
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    created_at = Column(
-        TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
-    )
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(UTC))
     updated_at = Column(
         TIMESTAMP(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
     )
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True)

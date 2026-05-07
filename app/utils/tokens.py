@@ -1,16 +1,16 @@
 """Refresh token lifecycle: create, validate-and-rotate, revoke."""
+
 from __future__ import annotations
 
 import logging
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models.refresh_tokens import RefreshToken
-
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ def create_refresh_token(db: Session, user_id: UUID) -> str:
     """Persist a new refresh token and return the raw (unhashed) value."""
     raw_token = secrets.token_urlsafe(48)
     token_hash = RefreshToken.hash_token(raw_token)
-    expires_at = datetime.now(timezone.utc) + timedelta(
+    expires_at = datetime.now(UTC) + timedelta(
         days=settings.REFRESH_TOKEN_EXPIRE_DAYS,
     )
 
@@ -80,7 +80,7 @@ def validate_and_rotate(db: Session, raw_token: str) -> tuple[RefreshToken, str]
         raise ValueError("Refresh token has expired. Please log in again.")
 
     # Rotate: revoke the old token, issue a fresh one
-    record.revoked_at = datetime.now(timezone.utc)
+    record.revoked_at = datetime.now(UTC)
     new_raw = create_refresh_token(db, record.user_id)
     return record, new_raw
 
@@ -88,16 +88,12 @@ def validate_and_rotate(db: Session, raw_token: str) -> tuple[RefreshToken, str]
 def revoke_token(db: Session, raw_token: str) -> bool:
     """Revoke a single refresh token (logout). Returns True if revoked."""
     token_hash = RefreshToken.hash_token(raw_token)
-    record = (
-        db.query(RefreshToken)
-        .filter(RefreshToken.token_hash == token_hash)
-        .first()
-    )
+    record = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
 
     if not record or record.is_revoked:
         return False
 
-    record.revoked_at = datetime.now(timezone.utc)
+    record.revoked_at = datetime.now(UTC)
     db.flush()
     logger.info("Refresh token revoked user_id=%s", record.user_id)
     return True
@@ -110,7 +106,7 @@ def revoke_all_for_user(db: Session, user_id: UUID) -> int:
 
 def _revoke_all_for_user(db: Session, user_id: UUID) -> int:
     """Internal helper — bulk-revoke all active tokens for a user."""
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     count = (
         db.query(RefreshToken)
         .filter(

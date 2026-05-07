@@ -1,4 +1,5 @@
 """Household management business logic."""
+
 from __future__ import annotations
 
 import logging
@@ -39,9 +40,6 @@ def update_household_preferences(
 
     db.flush()
     return household
-
-
-
 
 
 def create_private_household(
@@ -101,9 +99,7 @@ def reassign_admin_if_needed(
 
 def cleanup_empty_household(db: Session, household_id: UUID) -> None:
     """Delete a household if it has zero members remaining."""
-    remaining = (
-        db.query(User).filter(User.household_id == household_id).count()
-    )
+    remaining = db.query(User).filter(User.household_id == household_id).count()
     if remaining == 0:
         old = db.get(Household, household_id)
         if old:

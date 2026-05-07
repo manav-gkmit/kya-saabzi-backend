@@ -1,8 +1,9 @@
 """Tests for app.utils.tokens — refresh token create, rotate, revoke."""
+
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy.orm import Session
@@ -17,7 +18,6 @@ from app.utils.tokens import (
     validate_and_rotate,
 )
 
-
 # ---------------------------------------------------------------------------
 # create_refresh_token
 # ---------------------------------------------------------------------------
@@ -27,7 +27,9 @@ class TestCreateRefreshToken:
     """Verify token creation and persistence."""
 
     def test_returns_raw_token_string(
-        self, db_session: Session, test_user: User,
+        self,
+        db_session: Session,
+        test_user: User,
     ) -> None:
         raw = create_refresh_token(db_session, test_user.id)
         db_session.commit()
@@ -35,33 +37,31 @@ class TestCreateRefreshToken:
         assert len(raw) > 0
 
     def test_db_record_exists_after_creation(
-        self, db_session: Session, test_user: User,
+        self,
+        db_session: Session,
+        test_user: User,
     ) -> None:
         raw = create_refresh_token(db_session, test_user.id)
         db_session.commit()
 
         token_hash = RefreshToken.hash_token(raw)
         record = (
-            db_session.query(RefreshToken)
-            .filter(RefreshToken.token_hash == token_hash)
-            .first()
+            db_session.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
         )
         assert record is not None
         assert record.user_id == test_user.id
         assert record.revoked_at is None
 
     def test_token_hash_matches(
-        self, db_session: Session, test_user: User,
+        self,
+        db_session: Session,
+        test_user: User,
     ) -> None:
         raw = create_refresh_token(db_session, test_user.id)
         db_session.commit()
 
         expected_hash = RefreshToken.hash_token(raw)
-        record = (
-            db_session.query(RefreshToken)
-            .filter(RefreshToken.user_id == test_user.id)
-            .first()
-        )
+        record = db_session.query(RefreshToken).filter(RefreshToken.user_id == test_user.id).first()
         assert record.token_hash == expected_hash
 
 
@@ -74,7 +74,9 @@ class TestValidateAndRotate:
     """Verify token rotation and reuse detection."""
 
     def test_valid_token_rotates(
-        self, db_session: Session, test_user: User,
+        self,
+        db_session: Session,
+        test_user: User,
     ) -> None:
         raw = create_refresh_token(db_session, test_user.id)
         db_session.commit()
@@ -87,13 +89,16 @@ class TestValidateAndRotate:
         assert new_raw != raw
 
     def test_unknown_token_raises_value_error(
-        self, db_session: Session,
+        self,
+        db_session: Session,
     ) -> None:
         with pytest.raises(ValueError, match="not found"):
             validate_and_rotate(db_session, "totally-fake-token")
 
     def test_reused_token_raises_token_reuse_error(
-        self, db_session: Session, test_user: User,
+        self,
+        db_session: Session,
+        test_user: User,
     ) -> None:
         """Using a token that was already rotated should trigger reuse detection."""
         raw = create_refresh_token(db_session, test_user.id)
@@ -109,7 +114,9 @@ class TestValidateAndRotate:
         assert exc.value.user_id == test_user.id
 
     def test_reuse_revokes_all_user_sessions(
-        self, db_session: Session, test_user: User,
+        self,
+        db_session: Session,
+        test_user: User,
     ) -> None:
         """Token reuse should bulk-revoke every active token for the user."""
         raw1 = create_refresh_token(db_session, test_user.id)
@@ -136,7 +143,9 @@ class TestValidateAndRotate:
         assert active == 0
 
     def test_expired_token_raises_value_error(
-        self, db_session: Session, test_user: User,
+        self,
+        db_session: Session,
+        test_user: User,
     ) -> None:
         raw = create_refresh_token(db_session, test_user.id)
         db_session.commit()
@@ -144,11 +153,9 @@ class TestValidateAndRotate:
         # Manually expire the token
         token_hash = RefreshToken.hash_token(raw)
         record = (
-            db_session.query(RefreshToken)
-            .filter(RefreshToken.token_hash == token_hash)
-            .first()
+            db_session.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
         )
-        record.expires_at = datetime.now(timezone.utc) - timedelta(hours=1)
+        record.expires_at = datetime.now(UTC) - timedelta(hours=1)
         db_session.commit()
 
         with pytest.raises(ValueError, match="expired"):
@@ -164,7 +171,9 @@ class TestRevokeToken:
     """Verify single-token revocation."""
 
     def test_active_token_revoked(
-        self, db_session: Session, test_user: User,
+        self,
+        db_session: Session,
+        test_user: User,
     ) -> None:
         raw = create_refresh_token(db_session, test_user.id)
         db_session.commit()
@@ -176,14 +185,14 @@ class TestRevokeToken:
 
         token_hash = RefreshToken.hash_token(raw)
         record = (
-            db_session.query(RefreshToken)
-            .filter(RefreshToken.token_hash == token_hash)
-            .first()
+            db_session.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
         )
         assert record.revoked_at is not None
 
     def test_already_revoked_returns_false(
-        self, db_session: Session, test_user: User,
+        self,
+        db_session: Session,
+        test_user: User,
     ) -> None:
         raw = create_refresh_token(db_session, test_user.id)
         db_session.commit()
@@ -206,7 +215,9 @@ class TestRevokeAllForUser:
     """Verify bulk revocation."""
 
     def test_revokes_all_active_tokens(
-        self, db_session: Session, test_user: User,
+        self,
+        db_session: Session,
+        test_user: User,
     ) -> None:
         create_refresh_token(db_session, test_user.id)
         create_refresh_token(db_session, test_user.id)

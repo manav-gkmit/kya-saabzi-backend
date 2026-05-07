@@ -1,24 +1,22 @@
 import logging
-
-from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
-from sqlalchemy.orm import Session, joinedload
-from typing import List
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from app.schemas.cooklogs import CookLogRead
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy.orm import Session, joinedload
+
 from app.database.db import get_db
-from app.utils.auth import get_current_user
-from app.models.users import User
 from app.models.cooklogs import CookLog
-from app.utils.rate_limit import limiter, get_user_id_or_ip
-
+from app.models.users import User
+from app.schemas.cooklogs import CookLogRead
+from app.utils.auth import get_current_user
+from app.utils.rate_limit import get_user_id_or_ip, limiter
 
 router = APIRouter(prefix="/cooklogs", tags=["cooklogs"])
 logger = logging.getLogger(__name__)
 
 
-@router.get("/", response_model=List[CookLogRead])
+@router.get("/", response_model=list[CookLogRead])
 def get_cooklogs(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -76,18 +74,26 @@ def delete_cooklog(
     Returns:
         None: Responds with a 204 No Content status upon successful deletion.
     """
-    cooklog = db.query(CookLog).filter(
-        CookLog.id == cooklog_id,
-        CookLog.household_id == current_user.household_id,
-    ).first()
-    
+    cooklog = (
+        db.query(CookLog)
+        .filter(
+            CookLog.id == cooklog_id,
+            CookLog.household_id == current_user.household_id,
+        )
+        .first()
+    )
+
     if not cooklog or cooklog.deleted_at is not None:
-        logger.warning("Cook log delete failed: not found cooklog_id=%s user_id=%s", cooklog_id, current_user.id)
+        logger.warning(
+            "Cook log delete failed: not found cooklog_id=%s user_id=%s",
+            cooklog_id,
+            current_user.id,
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cook log entry not found.",
         )
-    
+
     if cooklog.user_id != current_user.id:
         logger.warning(
             "Cook log delete forbidden cooklog_id=%s owner_id=%s requester_id=%s",
@@ -99,7 +105,7 @@ def delete_cooklog(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to delete this cook log entry.",
         )
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     cooklog.deleted_at = now
     db.commit()
     logger.info("Cook log soft-deleted cooklog_id=%s user_id=%s", cooklog_id, current_user.id)

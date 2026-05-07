@@ -1,8 +1,9 @@
 """Tests for app.services.recommendation — HybridRecoEngine scoring."""
+
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
@@ -12,12 +13,12 @@ from app.models.cooklogs import CookLog
 from app.models.dishes import Dish
 from app.models.households import Household
 from app.models.users import User
-from app.services.recommendation import HybridRecoEngine, _DEFAULT_WINDOW_DAYS
-
+from app.services.recommendation import _DEFAULT_WINDOW_DAYS, HybridRecoEngine
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _dish(
     db: Session,
@@ -57,7 +58,7 @@ def _log(
     db.add(cl)
     db.flush()
     if days_ago:
-        cl.created_at = datetime.now(timezone.utc) - timedelta(days=days_ago)
+        cl.created_at = datetime.now(UTC) - timedelta(days=days_ago)
         db.flush()
     return cl
 
@@ -75,7 +76,9 @@ class TestHybridRecoEngineInit:
             HybridRecoEngine(db_session, uuid.uuid4())
 
     def test_valid_household_initialises(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         engine = HybridRecoEngine(db_session, test_household.id)
         assert engine._household_id == test_household.id
@@ -91,8 +94,11 @@ class TestGetTopN:
 
     @patch("app.services.recommendation.random.uniform", return_value=5.0)
     def test_returns_scored_dishes(
-        self, mock_rand, db_session: Session,
-        test_household: Household, test_user: User,
+        self,
+        mock_rand,
+        db_session: Session,
+        test_household: Household,
+        test_user: User,
     ) -> None:
         d1 = _dish(db_session, "dish a", test_household.id)
         d2 = _dish(db_session, "dish b", test_household.id)
@@ -110,7 +116,10 @@ class TestGetTopN:
 
     @patch("app.services.recommendation.random.uniform", return_value=5.0)
     def test_empty_when_no_candidates(
-        self, mock_rand, db_session: Session, test_household: Household,
+        self,
+        mock_rand,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         engine = HybridRecoEngine(db_session, test_household.id)
         results = engine.get_top_n("lunch")
@@ -126,7 +135,9 @@ class TestFetchCandidates:
     """Verify candidate filtering."""
 
     def test_filters_by_meal_type(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         _dish(db_session, "lunch dish", test_household.id, meal_type="lunch")
         _dish(db_session, "dinner dish", test_household.id, meal_type="dinner")
@@ -137,7 +148,9 @@ class TestFetchCandidates:
         assert all(c.meal_type == "lunch" for c in candidates)
 
     def test_deduplicates_household_over_global(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         _dish(db_session, "dal fry", household_id=None, meal_type="lunch")
         hh_dish = _dish(db_session, "Dal Fry", test_household.id, meal_type="lunch")
@@ -151,7 +164,9 @@ class TestFetchCandidates:
         assert dal_candidates[0].household_id == test_household.id
 
     def test_vegetarian_filter(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         test_household.preferences = {"is_vegetarian": True}
         db_session.commit()
@@ -179,7 +194,10 @@ class TestApplyCooldown:
     """Verify recently-cooked exclusion."""
 
     def test_excludes_recently_cooked(
-        self, db_session: Session, test_household: Household, test_user: User,
+        self,
+        db_session: Session,
+        test_household: Household,
+        test_user: User,
     ) -> None:
         d1 = _dish(db_session, "recent dish", test_household.id)
         d2 = _dish(db_session, "old dish", test_household.id)
@@ -195,7 +213,10 @@ class TestApplyCooldown:
         assert d2.id in ids
 
     def test_include_recently_cooked_skips_filter(
-        self, db_session: Session, test_household: Household, test_user: User,
+        self,
+        db_session: Session,
+        test_household: Household,
+        test_user: User,
     ) -> None:
         test_household.preferences = {"include_recently_cooked": True}
         db_session.commit()
@@ -218,15 +239,20 @@ class TestScoreAll:
     """Verify scoring mechanics."""
 
     def test_empty_list_returns_empty(
-        self, db_session: Session, test_household: Household,
+        self,
+        db_session: Session,
+        test_household: Household,
     ) -> None:
         engine = HybridRecoEngine(db_session, test_household.id)
         assert engine._score_all([]) == []
 
     @patch("app.services.recommendation.random.uniform", return_value=0.0)
     def test_higher_rated_dish_scores_higher(
-        self, mock_rand, db_session: Session,
-        test_household: Household, test_user: User,
+        self,
+        mock_rand,
+        db_session: Session,
+        test_household: Household,
+        test_user: User,
     ) -> None:
         d1 = _dish(db_session, "loved dish", test_household.id)
         d2 = _dish(db_session, "meh dish", test_household.id)
@@ -251,12 +277,18 @@ class TestBuildResults:
     """Verify result assembly with notes."""
 
     def test_notes_fetched_max_three(
-        self, db_session: Session, test_household: Household, test_user: User,
+        self,
+        db_session: Session,
+        test_household: Household,
+        test_user: User,
     ) -> None:
         d = _dish(db_session, "noted dish", test_household.id)
         for i in range(5):
             _log(
-                db_session, test_household.id, test_user.id, d.id,
+                db_session,
+                test_household.id,
+                test_user.id,
+                d.id,
                 note=f"note {i}",
             )
         db_session.commit()
@@ -284,10 +316,16 @@ class TestSafeWindow:
         assert HybridRecoEngine._safe_window({"recommendation_window_days": -5}) == 0
 
     def test_invalid_string_returns_default(self) -> None:
-        assert HybridRecoEngine._safe_window({"recommendation_window_days": "abc"}) == _DEFAULT_WINDOW_DAYS
+        assert (
+            HybridRecoEngine._safe_window({"recommendation_window_days": "abc"})
+            == _DEFAULT_WINDOW_DAYS
+        )
 
     def test_missing_key_returns_default(self) -> None:
         assert HybridRecoEngine._safe_window({}) == _DEFAULT_WINDOW_DAYS
 
     def test_none_value_returns_default(self) -> None:
-        assert HybridRecoEngine._safe_window({"recommendation_window_days": None}) == _DEFAULT_WINDOW_DAYS
+        assert (
+            HybridRecoEngine._safe_window({"recommendation_window_days": None})
+            == _DEFAULT_WINDOW_DAYS
+        )

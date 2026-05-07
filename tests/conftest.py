@@ -1,19 +1,19 @@
 """Shared test fixtures — household-aware, compatible with current schema."""
+
 from __future__ import annotations
+
+import sqlite3
+from datetime import UTC, datetime
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
-import sqlite3
-from datetime import datetime, timezone
 
-
-
-from app.main import app
 from app.database.db import get_db
+from app.main import app
 from app.models.common import Base
 from app.models.households import Household
 from app.models.users import User
@@ -27,10 +27,11 @@ SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 if not hasattr(SQLiteTypeCompiler, "visit_JSONB"):
     SQLiteTypeCompiler.visit_JSONB = lambda self, type_, **kw: "JSON"
 
+
 def _adapt_datetime_iso(val: datetime) -> str:
     """Store datetimes as ISO-8601 with timezone offset."""
     if val.tzinfo is None:
-        val = val.replace(tzinfo=timezone.utc)
+        val = val.replace(tzinfo=UTC)
     return val.isoformat()
 
 
@@ -38,7 +39,7 @@ def _convert_timestamp(val: bytes) -> datetime:
     """Read timestamps back as timezone-aware (defaulting to UTC)."""
     dt = datetime.fromisoformat(val.decode())
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
+        dt = dt.replace(tzinfo=UTC)
     return dt
 
 
@@ -55,7 +56,9 @@ engine = create_engine(
     native_datetime=True,
 )
 TestingSessionLocal = sessionmaker(
-    autocommit=False, autoflush=False, bind=engine,
+    autocommit=False,
+    autoflush=False,
+    bind=engine,
 )
 
 
@@ -63,10 +66,12 @@ TestingSessionLocal = sessionmaker(
 # Core fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def _disable_rate_limit():
     """Disable slowapi rate limiting during tests."""
     from app.utils.rate_limit import limiter
+
     original = limiter.enabled
     limiter.enabled = False
     yield
@@ -88,6 +93,7 @@ def db_session():
 @pytest.fixture(scope="function")
 def client(db_session: Session):
     """TestClient with the DB session overridden."""
+
     def override_get_db():
         try:
             yield db_session
@@ -102,6 +108,7 @@ def client(db_session: Session):
 # ---------------------------------------------------------------------------
 # Household fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def test_household(db_session: Session) -> Household:
@@ -126,6 +133,7 @@ def other_household(db_session: Session) -> Household:
 # ---------------------------------------------------------------------------
 # User fixtures
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def test_user(db_session: Session, test_household: Household) -> User:
@@ -186,6 +194,7 @@ def foreign_user(db_session: Session, other_household: Household) -> User:
 # Auth helpers
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def auth_headers(test_user: User) -> dict[str, str]:
     """Authorization header with a valid access token for test_user."""
@@ -199,6 +208,7 @@ def auth_override(test_user: User):
 
     Yields the user, then cleans up the override.
     """
+
     def override():
         return test_user
 
