@@ -1,0 +1,43 @@
+name: Ruff Lint
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+permissions:
+  contents: write
+
+jobs:
+  lint:
+    name: Ruff Lint & Auto-fix
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Install Ruff
+        run: pip install "ruff>=0.11.0"
+
+      - name: Ruff fix (lint + import sort + unused imports)
+        run: ruff check . --fix || true
+
+      - name: Ruff format
+        run: ruff format .
+
+      - name: Commit lint fixes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: auto-fix lint via Ruff"
+          commit_author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+
+      - name: Check for remaining issues
+        run: ruff check . --output-format=github
