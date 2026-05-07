@@ -1,0 +1,36 @@
+# https://docs.astral.sh/ruff/configuration/
+target-version = "py311"
+line-length = 100
+
+[lint]
+select = [
+    "F",      # pyflakes  — unused imports, undefined names, etc.
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "I",      # isort — import ordering
+    "UP",     # pyupgrade — modernize syntax (e.g. Optional → X | None)
+    "B",      # flake8-bugbear — common pitfalls
+    "SIM",    # flake8-simplify — simplifiable code
+    "RUF",    # ruff-specific rules
+]
+ignore = [
+    "E501",   # line-too-long (let formatter handle it)
+]
+# Auto-fixable categories
+fixable = ["ALL"]
+unfixable = []
+
+[lint.per-file-ignores]
+# Alembic migrations: unused imports are expected (they register model metadata)
+"alembic/versions/*.py" = ["F401"]
+# __init__.py re-exports
+"__init__.py" = ["F401"]
+
+[lint.isort]
+known-first-party = ["app"]
+force-single-line = false
+combine-as-imports = true
+
+[format]
+quote-style = "double"
+indent-style = "space"
