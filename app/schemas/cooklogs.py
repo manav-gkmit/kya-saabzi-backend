@@ -13,10 +13,6 @@ class CookLogBase(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class CookLogCreate(CookLogBase):
-    pass
-
-
 class CookLogRead(CookLogBase):
     id: UUID4
     user_id: UUID4

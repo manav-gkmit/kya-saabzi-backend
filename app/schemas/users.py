@@ -44,10 +44,6 @@ class UserRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class UserInDB(UserBase):
-    hashed_password: str
-
-
 class UserLogin(BaseModel):
     email: EmailStr
     password: PasswordStr
