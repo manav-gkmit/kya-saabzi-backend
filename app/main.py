@@ -1,5 +1,5 @@
 import logging
-from collections.abc import AsyncGenerator, Callable
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 import structlog
@@ -7,6 +7,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from starlette.middleware.base import RequestResponseEndpoint
+from starlette.responses import Response
 
 from app.api.v1.api import api_router
 from app.config import settings
@@ -82,7 +84,7 @@ app.include_router(api_router, prefix="/api/v1")
 
 
 @app.middleware("http")
-async def log_requests(request: Request, call_next: Callable):
+async def log_requests(request: Request, call_next: RequestResponseEndpoint) -> Response:
     logger.info("Incoming request: %s %s", request.method, request.url.path)
     response = None
     try:
