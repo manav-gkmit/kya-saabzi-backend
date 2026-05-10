@@ -1,8 +1,12 @@
+from datetime import datetime
 from typing import Annotated
 
 from pydantic import UUID4, BaseModel, ConfigDict, EmailStr, StringConstraints
 
-from app.models.common import Email, PasswordStr, Timestamp
+PasswordStr = Annotated[
+    str,
+    StringConstraints(min_length=8, max_length=128),
+]
 
 Username = Annotated[
     str,
@@ -16,7 +20,7 @@ Username = Annotated[
 
 
 class UserBase(BaseModel):
-    email: Email
+    email: EmailStr
     username: Username
 
 
@@ -26,20 +30,15 @@ class UserCreate(UserBase):
     invite_code: str | None = None  # Use this to join existing instead of creating
 
 
-class UserUpdate(BaseModel):
-    email: Email | None = None
-    username: Username | None = None
-    password: PasswordStr | None = None
-
 
 class UserRead(BaseModel):
     id: UUID4
-    email: Email
+    email: EmailStr
     username: Username
     household_id: UUID4 | None = None
-    created_at: Timestamp
-    updated_at: Timestamp
-    deleted_at: Timestamp | None = None
+    created_at: datetime
+    updated_at: datetime
+    deleted_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

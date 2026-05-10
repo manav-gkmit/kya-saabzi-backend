@@ -26,7 +26,3 @@ class RefreshRequest(BaseModel):
     refresh_token: str = Field(..., min_length=1)
 
 
-class TokenPayload(BaseModel):
-    sub: str | None = None
-    exp: int | None = None
-    jti: str | None = None

@@ -1,8 +1,7 @@
+from datetime import datetime
 from typing import Any
 
 from pydantic import UUID4, BaseModel, ConfigDict, Field, field_validator
-
-from app.models.common import Timestamp
 
 
 class HouseholdPreferences(BaseModel):
@@ -25,9 +24,6 @@ class HouseholdBase(BaseModel):
     name: str
 
 
-class HouseholdCreate(HouseholdBase):
-    pass
-
 
 class HouseholdUpdate(BaseModel):
     name: str | None = None
@@ -39,8 +35,8 @@ class HouseholdRead(HouseholdBase):
     invite_code: str
     admin_id: UUID4 | None = None
     preferences: HouseholdPreferences | None = None
-    created_at: Timestamp
-    updated_at: Timestamp
+    created_at: datetime
+    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
