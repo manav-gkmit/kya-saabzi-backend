@@ -1,10 +1,8 @@
 import logging
-import structlog
-from collections.abc import AsyncGenerator
-from typing import Callable
-
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 
+import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler

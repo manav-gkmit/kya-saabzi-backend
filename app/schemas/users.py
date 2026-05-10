@@ -30,7 +30,6 @@ class UserCreate(UserBase):
     invite_code: str | None = None  # Use this to join existing instead of creating
 
 
-
 class UserRead(BaseModel):
     id: UUID4
     email: EmailStr

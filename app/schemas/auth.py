@@ -24,5 +24,3 @@ class RefreshRequest(BaseModel):
     """Request body for /auth/refresh and /auth/logout."""
 
     refresh_token: str = Field(..., min_length=1)
-
-

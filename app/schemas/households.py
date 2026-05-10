@@ -24,7 +24,6 @@ class HouseholdBase(BaseModel):
     name: str
 
 
-
 class HouseholdUpdate(BaseModel):
     name: str | None = None
     preferences: HouseholdPreferences | None = None

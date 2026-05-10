@@ -1,12 +1,9 @@
 import uuid
 from datetime import UTC, datetime
-from typing import Annotated
 
-from pydantic import EmailStr, StringConstraints
 from sqlalchemy import TIMESTAMP, Column
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase
-
 
 
 class Base(DeclarativeBase):
