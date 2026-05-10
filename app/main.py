@@ -1,4 +1,8 @@
 import logging
+import structlog
+from collections.abc import AsyncGenerator
+from typing import Callable
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -12,13 +16,24 @@ from app.utils.rate_limit import limiter
 
 logging.basicConfig(
     level=logging.DEBUG if settings.DEBUG else logging.INFO,
-    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
+    format="%(message)s",
 )
-logger = logging.getLogger(__name__)
+structlog.configure(
+    processors=[
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.add_log_level,
+        structlog.processors.JSONRenderer(),
+    ],
+    wrapper_class=structlog.make_filtering_bound_logger(
+        logging.DEBUG if settings.DEBUG else logging.INFO
+    ),
+    logger_factory=structlog.PrintLoggerFactory(),
+)
+logger = structlog.get_logger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Handle app lifecycle."""
     logger.info(
         "Starting %s v%s in %s mode",
@@ -49,7 +64,7 @@ app.include_router(api_router, prefix="/api/v1")
 
 
 @app.middleware("http")
-async def log_requests(request: Request, call_next):
+async def log_requests(request: Request, call_next: Callable):
     logger.info("Incoming request: %s %s", request.method, request.url.path)
     response = None
     try:
@@ -73,12 +88,12 @@ async def log_requests(request: Request, call_next):
 
 
 @app.get("/")
-def read_root():
+def read_root() -> dict[str, str]:
     logger.debug("Root endpoint accessed")
     return {"Hello": "World"}
 
 
 @app.get("/health")
-def health_check():
+def health_check() -> dict[str, str]:
     logger.debug("Health check endpoint accessed")
     return {"status": "Healthy"}
