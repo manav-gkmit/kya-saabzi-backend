@@ -12,9 +12,11 @@ from app.api.v1.api import api_router
 from app.config import settings
 from app.utils.rate_limit import limiter
 
+stream_handler = logging.StreamHandler()
 logging.basicConfig(
     level=logging.DEBUG if settings.DEBUG else logging.INFO,
     format="%(message)s",
+    handlers=[stream_handler],
     force=True,
 )
 timestamper = structlog.processors.TimeStamper(fmt="iso")
@@ -44,8 +46,7 @@ formatter = structlog.stdlib.ProcessorFormatter(
         structlog.processors.JSONRenderer(),
     ],
 )
-for handler in logging.getLogger().handlers:
-    handler.setFormatter(formatter)
+stream_handler.setFormatter(formatter)
 logger = structlog.get_logger(__name__)
 
 
