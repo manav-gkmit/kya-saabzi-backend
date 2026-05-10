@@ -1,19 +1,9 @@
 import uuid
 from datetime import UTC, datetime
-from typing import Annotated
 
-from pydantic import EmailStr, StringConstraints
 from sqlalchemy import TIMESTAMP, Column
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase
-
-Timestamp = datetime
-
-
-Email = EmailStr
-
-
-PasswordStr = Annotated[str, StringConstraints(min_length=8, max_length=128)]
 
 
 class Base(DeclarativeBase):

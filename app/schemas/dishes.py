@@ -1,15 +1,15 @@
+from datetime import datetime
 from typing import Annotated, Literal
 
 from pydantic import UUID4, BaseModel, ConfigDict, Field, StringConstraints, field_validator
-
-from app.models.common import Timestamp
 
 
 class DishBase(BaseModel):
     name: str = Field(..., examples=["Palak Paneer"])
 
     @field_validator("name")
-    def check_dish(cls, v: str):
+    @classmethod
+    def check_dish(cls, v: str) -> str:
         stripped_v = v.strip()
         if not stripped_v:
             raise ValueError("Dish name cannot be empty")
@@ -58,10 +58,9 @@ class DishRead(DishBase):
     prep_time_minutes: int | None = None
     calories_estimate: int | None = None
     ingredients: list[str] = []
-    created_at: Timestamp
-    updated_at: Timestamp
-    deleted_at: Timestamp | None = None
-
+    created_at: datetime
+    updated_at: datetime
+    deleted_at: datetime | None = None
     model_config = ConfigDict(from_attributes=True)
 
     @field_validator("ingredients", mode="before")

@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship
 from .common import BaseModel
 
 
-def generate_invite_code():
+def generate_invite_code() -> str:
     return "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(8))
 
 
