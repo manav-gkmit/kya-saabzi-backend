@@ -33,7 +33,9 @@ def _copy_metadata_if_exists(db: Session, dish: Dish, dish_name_lower: str) -> b
     if existing_enriched and existing_enriched.ingredients:
         logger.info("Found existing enriched dish for '%s', copying metadata", dish.name)
         if not dish.ingredients:
-            attach_ingredients_to_dish(db, dish, [ing.name for ing in existing_enriched.ingredients])
+            attach_ingredients_to_dish(
+                db, dish, [ing.name for ing in existing_enriched.ingredients]
+            )
         if dish.calories_estimate is None:
             dish.calories_estimate = existing_enriched.calories_estimate
         if dish.prep_time_minutes is None:
