@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from app.database.db import get_db
 from app.models.users import User
 from app.schemas.dishes import DishCreate, DishRead, DishSearchResponse
+from app.services.cooklogs import create_cook_log
 from app.services.dish import (
-    create_cook_log,
     enrich_dish_background_task,
     find_or_create_dish,
     search_dishes,
