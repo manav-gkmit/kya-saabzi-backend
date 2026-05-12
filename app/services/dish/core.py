@@ -117,6 +117,8 @@ def find_or_create_dish(
     ingredients: list[str] | None = None,
 ) -> Dish:
     input_name = name.lower().strip()
+    if not input_name:
+        raise ValueError("Dish name cannot be empty after normalization")
 
     dish = get_exact_dish(db, input_name, household_id)
     if dish:
