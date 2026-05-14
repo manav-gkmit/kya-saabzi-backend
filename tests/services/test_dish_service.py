@@ -207,7 +207,7 @@ class TestFindOrCreateDish:
         db_session: Session,
         test_household: Household,
     ) -> None:
-        global_dish = _seed_dish(db_session, "dal fry", household_id=None)
+        _seed_dish(db_session, "dal fry", household_id=None)
         hh_dish = _seed_dish(db_session, "dal fry", test_household.id)
         db_session.commit()
 
@@ -467,13 +467,15 @@ class TestEnrichDishBackgroundTask:
             mock_db = MagicMock()
             mock_session_cls.return_value = mock_db
             mock_db.get.return_value = dish
-            with patch("app.services.dish.enrich_dish_with_gemini", return_value=mock_result):
-                with patch("app.services.dish._attach_ingredients_to_dish") as mock_attach:
-                    _enrich_dish_sync(dish.id)
-                    mock_attach.assert_called_once()
-                    assert dish.calories_estimate == 200
-                    assert dish.prep_time_minutes == 15
-                    mock_db.commit.assert_called_once()
+            with (
+                patch("app.services.dish.enrich_dish_with_gemini", return_value=mock_result),
+                patch("app.services.dish._attach_ingredients_to_dish") as mock_attach,
+            ):
+                _enrich_dish_sync(dish.id)
+                mock_attach.assert_called_once()
+                assert dish.calories_estimate == 200
+                assert dish.prep_time_minutes == 15
+                mock_db.commit.assert_called_once()
 
     def test_rolls_back_on_exception(self) -> None:
         import uuid

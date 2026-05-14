@@ -100,10 +100,10 @@ class TestGetTopN:
         test_household: Household,
         test_user: User,
     ) -> None:
-        d1 = _dish(db_session, "dish a", test_household.id)
-        d2 = _dish(db_session, "dish b", test_household.id)
-        d3 = _dish(db_session, "dish c", test_household.id)
-        d4 = _dish(db_session, "dish d", test_household.id)
+        _dish(db_session, "dish a", test_household.id)
+        _dish(db_session, "dish b", test_household.id)
+        _dish(db_session, "dish c", test_household.id)
+        _dish(db_session, "dish d", test_household.id)
         db_session.commit()
 
         engine = HybridRecoEngine(db_session, test_household.id)
@@ -153,7 +153,7 @@ class TestFetchCandidates:
         test_household: Household,
     ) -> None:
         _dish(db_session, "dal fry", household_id=None, meal_type="lunch")
-        hh_dish = _dish(db_session, "Dal Fry", test_household.id, meal_type="lunch")
+        _dish(db_session, "Dal Fry", test_household.id, meal_type="lunch")
         db_session.commit()
 
         engine = HybridRecoEngine(db_session, test_household.id)
