@@ -34,11 +34,11 @@ def get_current_user(
 
     try:
         payload = decode_access_token(creds.credentials)
-    except InvalidTokenError:
+    except InvalidTokenError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
-        )
+        ) from exc
 
     user_id = payload.get("sub")
     if user_id is None:
@@ -49,11 +49,11 @@ def get_current_user(
 
     try:
         user_id_uuid = uuid.UUID(user_id)
-    except ValueError:
+    except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid user ID format in token",
-        )
+        ) from exc
 
     user = db.query(User).filter(User.id == user_id_uuid).first()
     if not user:

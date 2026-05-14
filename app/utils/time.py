@@ -17,10 +17,7 @@ def get_current_meal_type(
         user_tz: Optional timezone to use with datetime.now().
     """
     if reference_dt:
-        if user_tz:
-            hour = reference_dt.astimezone(user_tz).hour
-        else:
-            hour = reference_dt.hour
+        hour = reference_dt.astimezone(user_tz).hour if user_tz else reference_dt.hour
     else:
         hour = datetime.now(user_tz).hour
 

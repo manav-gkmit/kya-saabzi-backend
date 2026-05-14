@@ -153,12 +153,12 @@ def refresh_access_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(exc),
-        )
+        ) from exc
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(exc),
-        )
+        ) from exc
 
     access_token = create_access_token(subject=str(old_record.user_id))
     db.commit()

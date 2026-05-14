@@ -120,7 +120,7 @@ class TestValidateAndRotate:
     ) -> None:
         """Token reuse should bulk-revoke every active token for the user."""
         raw1 = create_refresh_token(db_session, test_user.id)
-        raw2 = create_refresh_token(db_session, test_user.id)
+        create_refresh_token(db_session, test_user.id)
         db_session.commit()
 
         # Rotate raw1 first

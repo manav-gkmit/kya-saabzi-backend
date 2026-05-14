@@ -43,7 +43,7 @@ class Dish(BaseModel):
         nullable=False,
         default="lunch",
     )
-    spiciness = Column(Integer, nullable=False, default=1)  # 1–5
+    spiciness = Column(Integer, nullable=False, default=1)  # 1-5
     prep_time_minutes = Column(Integer, nullable=True)  # in minutes
     calories_estimate = Column(Integer, nullable=True)
 

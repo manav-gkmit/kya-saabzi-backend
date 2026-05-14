@@ -20,6 +20,7 @@ dependencies = [
     "pydantic-settings==2.2.1",
     "PyJWT==2.12.1",
     "python-dotenv==1.0.1",
+    "ruff>=0.15.13",
     "slowapi==0.1.9",
     "SQLAlchemy==2.0.44",
     "structlog==24.1.0",
@@ -36,3 +37,6 @@ packages = ["app"]
 
 [tool.uv]
 managed = true
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query"]
