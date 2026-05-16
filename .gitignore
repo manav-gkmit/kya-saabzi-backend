@@ -9,3 +9,4 @@ venv/
 postman
 .venv
 test.db
+.ruff_cache
