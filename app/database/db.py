@@ -24,11 +24,14 @@ SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
     bind=engine,
+    expire_on_commit=False,
     future=True,
 )
 
 
 # --- Asynchronous database configuration ---
+# psycopg 3 (psycopg package) natively supports both sync and async via the
+# same postgresql+psycopg:// URL scheme, so no driver remapping is required.
 async_engine = create_async_engine(
     settings.DATABASE_URL,
     pool_size=10,
@@ -40,6 +43,9 @@ async_engine = create_async_engine(
 )
 
 
+# expire_on_commit=False on both session factories so that ORM objects remain
+# accessible after commit without requiring an explicit refresh in every caller.
+# V1 routes that need fresh state call db.refresh() explicitly.
 AsyncSessionLocal = async_sessionmaker(
     bind=async_engine,
     autocommit=False,
