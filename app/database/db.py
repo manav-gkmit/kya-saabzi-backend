@@ -1,7 +1,8 @@
 import logging
-from collections.abc import Iterator
+from collections.abc import AsyncGenerator, Iterator
 
 from sqlalchemy import create_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import settings
@@ -27,6 +28,26 @@ SessionLocal = sessionmaker(
 )
 
 
+# --- Asynchronous database configuration ---
+async_engine = create_async_engine(
+    settings.DATABASE_URL,
+    pool_size=10,
+    max_overflow=20,
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    future=True,
+    echo=settings.DEBUG,
+)
+
+
+AsyncSessionLocal = async_sessionmaker(
+    bind=async_engine,
+    autocommit=False,
+    autoflush=False,
+    expire_on_commit=False,
+)
+
+
 def get_db() -> Iterator[Session]:
     """
     FastAPI dependency that provides a database session.
@@ -41,3 +62,19 @@ def get_db() -> Iterator[Session]:
     finally:
         db.close()
         logger.debug("Database session closed")
+
+
+async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
+    """
+    FastAPI dependency that provides an asynchronous database session.
+
+    Yields:
+        AsyncSession: The async database session.
+    """
+    async with AsyncSessionLocal() as db:
+        logger.debug("Async database session opened")
+        try:
+            yield db
+        finally:
+            logger.debug("Async database session closed")
+
