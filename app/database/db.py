@@ -83,4 +83,3 @@ async def get_async_db() -> AsyncGenerator[AsyncSession, None]:
             yield db
         finally:
             logger.debug("Async database session closed")
-
