@@ -11,6 +11,7 @@ from starlette.middleware.base import RequestResponseEndpoint
 from starlette.responses import Response
 
 from app.api.v1.api import api_router
+from app.api.v2.api import api_v2_router
 from app.config import settings
 from app.utils.rate_limit import limiter
 
@@ -81,6 +82,7 @@ app.add_middleware(
 
 # --- Routers ---
 app.include_router(api_router, prefix="/api/v1")
+app.include_router(api_v2_router, prefix="/api/v2")
 
 
 @app.middleware("http")

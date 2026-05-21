@@ -215,3 +215,99 @@ def auth_override(test_user: User):
     app.dependency_overrides[get_current_user] = override
     yield test_user
     del app.dependency_overrides[get_current_user]
+
+
+# ---------------------------------------------------------------------------
+# Async fixtures for V2 endpoints
+# ---------------------------------------------------------------------------
+from collections.abc import AsyncGenerator
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+from app.database.db import get_async_db
+from app.utils.auth import get_current_user_async
+
+async_test_engine = create_async_engine(
+    "sqlite+aiosqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
+TestingAsyncSessionLocal = async_sessionmaker(
+    bind=async_test_engine,
+    autocommit=False,
+    autoflush=False,
+    expire_on_commit=False,
+)
+
+
+@pytest.fixture(scope="function")
+async def async_db_session() -> AsyncGenerator[AsyncSession, None]:
+    """Provide a clean async database session per test."""
+    async with async_test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    async with TestingAsyncSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
+
+    async with async_test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+
+
+@pytest.fixture(scope="function")
+def async_client(async_db_session: AsyncSession):
+    """TestClient with the async DB session overridden."""
+    async def override_get_async_db() -> AsyncGenerator[AsyncSession, None]:
+        yield async_db_session
+
+    app.dependency_overrides[get_async_db] = override_get_async_db
+    yield TestClient(app)
+    del app.dependency_overrides[get_async_db]
+
+
+@pytest.fixture()
+async def async_test_household(async_db_session: AsyncSession) -> Household:
+    """Provide a default household in the async test database."""
+    household = Household(name="Test Home")
+    async_db_session.add(household)
+    await async_db_session.commit()
+    await async_db_session.refresh(household)
+    return household
+
+
+@pytest.fixture()
+async def async_test_user(async_db_session: AsyncSession, async_test_household: Household) -> User:
+    """Provide a default user in the async test database."""
+    user = User(
+        email="test@example.com",
+        username="testuser",
+        hashed_password=get_password_hash("password"),
+        household_id=async_test_household.id,
+    )
+    async_db_session.add(user)
+    await async_db_session.commit()
+    await async_db_session.refresh(user)
+
+    async_test_household.admin_id = user.id
+    await async_db_session.commit()
+    await async_db_session.refresh(async_test_household)
+    return user
+
+
+@pytest.fixture()
+def async_auth_headers(async_test_user: User) -> dict[str, str]:
+    """Authorization headers for the default user in async tests."""
+    token = create_access_token(subject=str(async_test_user.id))
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture()
+def async_auth_override(async_test_user: User):
+    """Override get_current_user_async dependency for async routes."""
+    async def override():
+        return async_test_user
+
+    app.dependency_overrides[get_current_user_async] = override
+    yield async_test_user
+    del app.dependency_overrides[get_current_user_async]
+
