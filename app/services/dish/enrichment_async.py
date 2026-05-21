@@ -69,42 +69,43 @@ async def _apply_gemini_result_async(
 
 async def enrich_dish_background_task_async(dish_id: UUID) -> None:
     """Background task wrapper — fully async non-blocking enrichment."""
-    db = AsyncSessionLocal()
-    try:
-        dish = await db.get(Dish, dish_id)
-        if not dish:
-            return
-
-        await db.refresh(dish, ["ingredients"])
-
-        if (
-            dish.ingredients
-            and dish.calories_estimate is not None
-            and dish.prep_time_minutes is not None
-        ):
-            return
-
-        dish_name_lower = dish.name.lower()
-
-        if await _copy_metadata_if_exists_async(db, dish, dish_name_lower):
-            return
-
-        async with _ENRICHMENT_LOCK:
-            if dish_name_lower in _ENRICHMENT_IN_PROGRESS:
-                logger.info("Enrichment already in progress for '%s', skipping API call", dish.name)
-                return
-            _ENRICHMENT_IN_PROGRESS.add(dish_name_lower)
-
+    async with AsyncSessionLocal() as db:
         try:
-            logger.info("Triggering Gemini enrichment for dish: %s", dish.name)
-            result = await enrich_dish_with_gemini_async(dish.name)
-            await _apply_gemini_result_async(db, dish.name, dish_name_lower, result)
-        finally:
-            async with _ENRICHMENT_LOCK:
-                _ENRICHMENT_IN_PROGRESS.discard(dish_name_lower)
+            dish = await db.get(Dish, dish_id)
+            if not dish:
+                return
 
-    except Exception as e:
-        logger.error("Error in enrich_dish_background_task_async: %s", e)
-        await db.rollback()
-    finally:
-        await db.close()
+            await db.refresh(dish, ["ingredients"])
+
+            if (
+                dish.ingredients
+                and dish.calories_estimate is not None
+                and dish.prep_time_minutes is not None
+            ):
+                return
+
+            dish_name_lower = dish.name.lower()
+
+            if await _copy_metadata_if_exists_async(db, dish, dish_name_lower):
+                return
+
+            async with _ENRICHMENT_LOCK:
+                if dish_name_lower in _ENRICHMENT_IN_PROGRESS:
+                    logger.info(
+                        "Enrichment already in progress for '%s', skipping API call",
+                        dish.name,
+                    )
+                    return
+                _ENRICHMENT_IN_PROGRESS.add(dish_name_lower)
+
+            try:
+                logger.info("Triggering Gemini enrichment for dish: %s", dish.name)
+                result = await enrich_dish_with_gemini_async(dish.name)
+                await _apply_gemini_result_async(db, dish.name, dish_name_lower, result)
+            finally:
+                async with _ENRICHMENT_LOCK:
+                    _ENRICHMENT_IN_PROGRESS.discard(dish_name_lower)
+
+        except Exception:
+            logger.exception("Error in enrich_dish_background_task_async")
+            await db.rollback()
