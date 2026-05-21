@@ -152,7 +152,11 @@ async def validate_and_rotate_async(db: AsyncSession, raw_token: str) -> tuple[R
         Tuple of (old RefreshToken record, new raw token string).
 
     Raises:
-        ValueError: If the token is invalid, expired, or already revoked.
+        ValueError: If the token is invalid or expired.
+        TokenReuseError: If a revoked token is presented. Before raising, this
+            function bulk-revokes all active refresh tokens for the user as a
+            safety measure. The caller must commit the session after catching
+            this exception so the revocation is persisted.
     """
     token_hash = RefreshToken.hash_token(raw_token)
     # Lock the row so concurrent refresh requests cannot both read revoked_at=NULL
