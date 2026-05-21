@@ -7,7 +7,7 @@ import logging
 from typing import NoReturn
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.db import get_async_db
@@ -48,14 +48,26 @@ async def register_user(
     """Register a user and create (or join) a household asynchronously."""
     fp = _fingerprint(f"{user_data.email.lower()}:{user_data.username.lower()}")
 
-    if (await db.execute(select(User).where(User.email == user_data.email))).scalars().first():
-        _throw_conflict("Email already registered.", fp)
-    if (
-        (await db.execute(select(User).where(User.username == user_data.username)))
+    existing = (
+        (
+            await db.execute(
+                select(User).where(
+                    or_(
+                        User.email == user_data.email,
+                        User.username == user_data.username,
+                    )
+                )
+            )
+        )
         .scalars()
         .first()
-    ):
-        _throw_conflict("Username is already taken.", fp)
+    )
+    if existing:
+        if existing.email == user_data.email:
+            _throw_conflict("Email already registered.", fp)
+        if existing.username == user_data.username:
+            _throw_conflict("Username is already taken.", fp)
+        _throw_conflict("Account already exists.", fp)
 
     if user_data.invite_code:
         code = user_data.invite_code.upper().strip()
