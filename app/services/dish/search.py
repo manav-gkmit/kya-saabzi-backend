@@ -1,6 +1,8 @@
 import difflib
 from uuid import UUID
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from app.database.helpers import escape_like
@@ -40,3 +42,38 @@ def search_dishes(
 
     scored.sort(key=lambda x: x["similarity"], reverse=True)
     return scored[offset : offset + limit]
+
+
+async def search_dishes_async(
+    db: AsyncSession,
+    query: str,
+    *,
+    household_id: UUID,
+    limit: int = 5,
+    offset: int = 0,
+) -> list[dict]:
+    q_escaped = escape_like(query)
+    stmt = (
+        select(Dish.id, Dish.name)
+        .where(
+            Dish.name.ilike(f"%{q_escaped}%", escape="\\"),
+            (Dish.household_id == household_id) | (Dish.household_id.is_(None)),
+        )
+        .limit(_SEARCH_CANDIDATE_LIMIT)
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    q_lower = query.lower()
+    scored: list[dict] = [
+        {
+            "id": dish_id,
+            "name": dish_name,
+            "similarity": difflib.SequenceMatcher(None, q_lower, dish_name.lower()).ratio(),
+        }
+        for dish_id, dish_name in rows
+    ]
+
+    scored.sort(key=lambda x: x["similarity"], reverse=True)
+    return scored[offset : offset + limit]
+
