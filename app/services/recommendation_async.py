@@ -118,9 +118,8 @@ class AsyncHybridRecoEngine:
             .group_by(CookLog.dish_id)
         )
 
-        pop_res, hist_res = await asyncio.gather(
-            self._db.execute(pop_stmt), self._db.execute(hist_stmt)
-        )
+        pop_res = await self._db.execute(pop_stmt)
+        hist_res = await self._db.execute(hist_stmt)
         pop_map = {row[0]: row[1] for row in pop_res.all()}
         hist_map = {row[0]: float(row[1]) for row in hist_res.all() if row[1] is not None}
 
@@ -156,6 +155,7 @@ class AsyncHybridRecoEngine:
                     CookLog.dish_id == dish.id,
                     CookLog.note.isnot(None),
                     CookLog.household_id == self._household_id,
+                    CookLog.deleted_at.is_(None),
                 )
                 .order_by(desc(CookLog.created_at))
                 .limit(3)
