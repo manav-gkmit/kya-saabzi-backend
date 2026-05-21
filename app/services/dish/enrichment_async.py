@@ -16,7 +16,9 @@ _ENRICHMENT_IN_PROGRESS: set[str] = set()
 _ENRICHMENT_LOCK = asyncio.Lock()
 
 
-async def _copy_metadata_if_exists_async(db: AsyncSession, dish: Dish, dish_name_lower: str) -> bool:
+async def _copy_metadata_if_exists_async(
+    db: AsyncSession, dish: Dish, dish_name_lower: str
+) -> bool:
     """Returns True if it found and copied metadata from an existing dish asynchronously."""
     stmt = select(Dish).where(
         func.lower(Dish.name) == dish_name_lower,
@@ -43,7 +45,9 @@ async def _copy_metadata_if_exists_async(db: AsyncSession, dish: Dish, dish_name
     return False
 
 
-async def _apply_gemini_result_async(db: AsyncSession, dish_name: str, dish_name_lower: str, result) -> None:
+async def _apply_gemini_result_async(
+    db: AsyncSession, dish_name: str, dish_name_lower: str, result
+) -> None:
     """Applies Gemini result to all dishes with the same name missing metadata asynchronously."""
     if not result:
         return

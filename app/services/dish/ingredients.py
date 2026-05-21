@@ -70,4 +70,3 @@ async def attach_ingredients_to_dish_async(
     for name in normalized_names:
         if name not in current_ingredient_names:
             dish.ingredients.append(existing_map[name])
-

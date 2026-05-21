@@ -38,7 +38,9 @@ async def search_dishes_endpoint(
     if len(q) < 3:
         return []
 
-    return await search_dishes_async(db, q, household_id=user.household_id, limit=limit, offset=offset)
+    return await search_dishes_async(
+        db, q, household_id=user.household_id, limit=limit, offset=offset
+    )
 
 
 @router.post("/", response_model=DishRead)

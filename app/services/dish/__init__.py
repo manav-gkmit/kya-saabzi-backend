@@ -12,4 +12,3 @@ __all__ = [
     "search_dishes",
     "search_dishes_async",
 ]
-

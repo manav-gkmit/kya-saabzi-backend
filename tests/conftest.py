@@ -221,7 +221,9 @@ def auth_override(test_user: User):
 # Async fixtures for V2 endpoints
 # ---------------------------------------------------------------------------
 from collections.abc import AsyncGenerator
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
 from app.database.db import get_async_db
 from app.utils.auth import get_current_user_async
 
@@ -257,6 +259,7 @@ async def async_db_session() -> AsyncGenerator[AsyncSession, None]:
 @pytest.fixture(scope="function")
 def async_client(async_db_session: AsyncSession):
     """TestClient with the async DB session overridden."""
+
     async def override_get_async_db() -> AsyncGenerator[AsyncSession, None]:
         yield async_db_session
 
@@ -304,10 +307,10 @@ def async_auth_headers(async_test_user: User) -> dict[str, str]:
 @pytest.fixture()
 def async_auth_override(async_test_user: User):
     """Override get_current_user_async dependency for async routes."""
+
     async def override():
         return async_test_user
 
     app.dependency_overrides[get_current_user_async] = override
     yield async_test_user
     del app.dependency_overrides[get_current_user_async]
-

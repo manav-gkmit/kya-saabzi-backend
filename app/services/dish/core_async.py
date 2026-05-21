@@ -14,7 +14,9 @@ from app.utils.time import get_current_meal_type
 logger = logging.getLogger(__name__)
 
 
-async def get_exact_dish_async(db: AsyncSession, input_name: str, household_id: UUID) -> Dish | None:
+async def get_exact_dish_async(
+    db: AsyncSession, input_name: str, household_id: UUID
+) -> Dish | None:
     stmt = (
         select(Dish)
         .where(
@@ -27,7 +29,9 @@ async def get_exact_dish_async(db: AsyncSession, input_name: str, household_id: 
     return result.scalars().first()
 
 
-async def get_fuzzy_dish_async(db: AsyncSession, input_name: str, household_id: UUID) -> Dish | None:
+async def get_fuzzy_dish_async(
+    db: AsyncSession, input_name: str, household_id: UUID
+) -> Dish | None:
     first_word = (
         escape_like(input_name.split()[0]) if input_name.strip() else escape_like(input_name)
     )

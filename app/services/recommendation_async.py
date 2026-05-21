@@ -55,7 +55,9 @@ class AsyncHybridRecoEngine:
         if avoid:
             avoid_list = [i.strip().lower() for i in avoid if isinstance(i, str) and i.strip()]
             if avoid_list:
-                stmt = stmt.where(~Dish.ingredients.any(func.lower(Ingredient.name).in_(avoid_list)))
+                stmt = stmt.where(
+                    ~Dish.ingredients.any(func.lower(Ingredient.name).in_(avoid_list))
+                )
 
         result = await self._db.execute(stmt)
         candidates = result.scalars().all()

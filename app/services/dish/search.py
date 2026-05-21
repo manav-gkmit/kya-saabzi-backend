@@ -76,4 +76,3 @@ async def search_dishes_async(
 
     scored.sort(key=lambda x: x["similarity"], reverse=True)
     return scored[offset : offset + limit]
-

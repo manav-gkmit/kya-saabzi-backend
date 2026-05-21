@@ -42,20 +42,32 @@ def _throw_conflict(detail: str, fp: str) -> NoReturn:
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")
-async def register_user(request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_async_db)):
+async def register_user(
+    request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_async_db)
+):
     """Register a user and create (or join) a household asynchronously."""
     fp = _fingerprint(f"{user_data.email.lower()}:{user_data.username.lower()}")
 
     if (await db.execute(select(User).where(User.email == user_data.email))).scalars().first():
         _throw_conflict("Email already registered.", fp)
-    if (await db.execute(select(User).where(User.username == user_data.username))).scalars().first():
+    if (
+        (await db.execute(select(User).where(User.username == user_data.username)))
+        .scalars()
+        .first()
+    ):
         _throw_conflict("Username is already taken.", fp)
 
     if user_data.invite_code:
         code = user_data.invite_code.upper().strip()
-        household = (await db.execute(select(Household).where(Household.invite_code == code))).scalars().first()
+        household = (
+            (await db.execute(select(Household).where(Household.invite_code == code)))
+            .scalars()
+            .first()
+        )
         if not household:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid invite code provided.")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Invalid invite code provided."
+            )
         is_new = False
     else:
         name = user_data.household_name or f"{user_data.username}'s Home"
@@ -84,7 +96,9 @@ async def register_user(request: Request, user_data: UserCreate, db: AsyncSessio
 
 @router.post("/login", response_model=Token)
 @limiter.limit("5/minute")
-async def login_for_access_token(request: Request, user_data: UserLogin, db: AsyncSession = Depends(get_async_db)):
+async def login_for_access_token(
+    request: Request, user_data: UserLogin, db: AsyncSession = Depends(get_async_db)
+):
     """Authenticate and return an access + refresh token pair asynchronously."""
     fp = _fingerprint(user_data.email.lower())
     logger.info("Login attempt identifier=%s", fp)
@@ -92,19 +106,28 @@ async def login_for_access_token(request: Request, user_data: UserLogin, db: Asy
     user = (await db.execute(select(User).where(User.email == user_data.email))).scalars().first()
     if not user or not verify_password(user_data.password, user.hashed_password):
         logger.warning("Login failed identifier=%s", fp)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials provided.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials provided."
+        )
 
     access_token = create_access_token(subject=str(user.id))
     refresh_token = await create_refresh_token_async(db, user.id)
     await db.commit()
 
     logger.info("Login successful user_id=%s asynchronously", user.id)
-    return {"access_token": access_token, "refresh_token": refresh_token, "user": user, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "user": user,
+        "token_type": "bearer",
+    }
 
 
 @router.post("/refresh", response_model=TokenRefresh)
 @limiter.limit("10/minute")
-async def refresh_access_token(request: Request, body: RefreshRequest, db: AsyncSession = Depends(get_async_db)):
+async def refresh_access_token(
+    request: Request, body: RefreshRequest, db: AsyncSession = Depends(get_async_db)
+):
     """Exchange a valid refresh token for a new access + refresh pair asynchronously."""
     try:
         old_record, new_refresh = await validate_and_rotate_async(db, body.refresh_token)

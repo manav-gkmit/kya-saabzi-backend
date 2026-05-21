@@ -27,7 +27,8 @@ router = APIRouter(prefix="/households", tags=["households"])
 
 @router.get("/me", response_model=HouseholdRead)
 async def get_my_household(
-    household_id: UUID = Depends(get_current_household_async), db: AsyncSession = Depends(get_async_db)
+    household_id: UUID = Depends(get_current_household_async),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Fetch preferences and data for the user's current household asynchronously."""
     household = await db.get(Household, household_id)
@@ -53,8 +54,12 @@ async def update_my_household(
             detail="Only the household admin can update these settings.",
         )
 
-    prefs = update_data.preferences.model_dump(exclude_unset=True) if update_data.preferences else None
-    await update_household_preferences_async(db, household, name=update_data.name, preferences_patch=prefs)
+    prefs = (
+        update_data.preferences.model_dump(exclude_unset=True) if update_data.preferences else None
+    )
+    await update_household_preferences_async(
+        db, household, name=update_data.name, preferences_patch=prefs
+    )
     await db.commit()
     await db.refresh(household)
     return household
@@ -87,7 +92,10 @@ async def join_household(
     target = result.scalars().first()
 
     if not target:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Household with this invite code not found.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Household with this invite code not found.",
+        )
     if user.household_id == target.id:
         return target
 
@@ -103,12 +111,18 @@ async def join_household(
 @router.post("/leave", response_model=HouseholdRead)
 @limiter.limit("5/minute", key_func=get_user_id_or_ip)
 async def leave_household(
-    request: Request, user: User = Depends(get_current_user_async), db: AsyncSession = Depends(get_async_db)
+    request: Request,
+    user: User = Depends(get_current_user_async),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Leave the current household; a new private household is created asynchronously."""
     old_household_id = user.household_id
 
-    stmt = select(func.count()).select_from(User).where(User.household_id == old_household_id, User.id != user.id)
+    stmt = (
+        select(func.count())
+        .select_from(User)
+        .where(User.household_id == old_household_id, User.id != user.id)
+    )
     result = await db.execute(stmt)
     other_members = result.scalar() or 0
 
@@ -126,7 +140,9 @@ async def leave_household(
 
 @router.delete("/me/members/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_household_member(
-    member_id: UUID, user: User = Depends(get_current_user_async), db: AsyncSession = Depends(get_async_db)
+    member_id: UUID,
+    user: User = Depends(get_current_user_async),
+    db: AsyncSession = Depends(get_async_db),
 ):
     """Remove a member from the household asynchronously (admin only)."""
     household = await db.get(Household, user.household_id)
@@ -134,10 +150,14 @@ async def remove_household_member(
         raise HTTPException(status_code=404, detail="Household not found")
 
     if household.admin_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the admin can remove members.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Only the admin can remove members."
+        )
 
     if member_id == user.id:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Use the /leave endpoint instead.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Use the /leave endpoint instead."
+        )
 
     stmt = select(User).where(User.id == member_id, User.household_id == household.id)
     result = await db.execute(stmt)

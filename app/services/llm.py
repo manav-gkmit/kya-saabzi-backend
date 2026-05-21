@@ -131,4 +131,3 @@ async def enrich_dish_with_gemini_async(dish_name: str) -> DishEnrichmentResult 
             raise e
         logger.exception("Unexpected error enriching dish '%s': %s", dish_name, e)
         return None
-
