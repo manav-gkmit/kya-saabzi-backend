@@ -79,7 +79,7 @@ async def create_dish(
     await db.commit()
     await db.refresh(dish, ["ingredients"])
 
-    if not (dish.ingredients and dish.calories_estimate and dish.prep_time_minutes):
+    if (not dish.ingredients) or (dish.calories_estimate is None) or (dish.prep_time_minutes is None):
         background_tasks.add_task(enrich_dish_background_task_async, dish.id)
 
     logger.info(

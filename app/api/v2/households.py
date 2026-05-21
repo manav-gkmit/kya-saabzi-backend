@@ -48,7 +48,7 @@ async def update_my_household(
     if not household:
         raise HTTPException(status_code=404, detail="Household not found")
 
-    if household.admin_id and household.admin_id != user.id:
+    if household.admin_id is None or household.admin_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the household admin can update these settings.",
@@ -103,7 +103,8 @@ async def join_household(
     user.household_id = target.id
     await db.flush()
 
-    await cleanup_empty_household_async(db, old_household_id)
+    if old_household_id and old_household_id != target.id:
+        await cleanup_empty_household_async(db, old_household_id)
     await db.commit()
     return target
 
