@@ -8,6 +8,7 @@ from typing import NoReturn
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import or_, select
+from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.db import get_async_db
@@ -38,6 +39,15 @@ def _fingerprint(val: str) -> str:
 def _throw_conflict(detail: str, fp: str) -> NoReturn:
     logger.warning("Registration blocked: %s for identifier=%s", detail, fp)
     raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
+
+
+def _conflict_from_integrity_error(exc: Exception, fp: str) -> NoReturn:
+    msg = str(exc).lower()
+    if "users_email_key" in msg or "email" in msg:
+        _throw_conflict("Email already registered.", fp)
+    if "users_username_key" in msg or "username" in msg:
+        _throw_conflict("Username is already taken.", fp)
+    _throw_conflict("Account already exists.", fp)
 
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
@@ -95,12 +105,26 @@ async def register_user(
         household_id=household.id,
     )
     db.add(user)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError as exc:
+        await db.rollback()
+        _conflict_from_integrity_error(exc, fp)
+    except DBAPIError as exc:
+        await db.rollback()
+        _conflict_from_integrity_error(exc, fp)
 
     if is_new:
         household.admin_id = user.id
 
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as exc:
+        await db.rollback()
+        _conflict_from_integrity_error(exc, fp)
+    except DBAPIError as exc:
+        await db.rollback()
+        _conflict_from_integrity_error(exc, fp)
     await db.refresh(user)
     logger.info("User registered user_id=%s household_id=%s asynchronously", user.id, household.id)
     return user
