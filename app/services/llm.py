@@ -87,3 +87,47 @@ def enrich_dish_with_gemini(dish_name: str) -> DishEnrichmentResult | None:
             raise e
         logger.exception("Unexpected error enriching dish '%s': %s", dish_name, e)
         return None
+
+
+@retry(
+    retry=retry_if_exception(is_transient_error),
+    wait=wait_exponential(multiplier=1, min=2, max=30),
+    stop=stop_after_attempt(4),
+    reraise=True,
+)
+async def enrich_dish_with_gemini_async(dish_name: str) -> DishEnrichmentResult | None:
+    """Uses Google Gemini asynchronously to fetch default ingredients, prep time, and calories for a given dish."""
+    client = _get_gemini_client()
+    if client is None:
+        logger.warning("GEMINI_API_KEY not configured. Skipping enrichment.")
+        return None
+
+    try:
+        prompt = f"Provide the core ingredients, estimated combined prep and cook time in minutes, and estimated calories per serving for the dish '{dish_name}'."
+
+        response = await client.aio.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config={
+                "response_mime_type": "application/json",
+                "response_schema": DishEnrichmentResult,
+            },
+        )
+        if not response or not response.text:
+            logger.warning("Gemini blocked/returned empty response for dish '%s'", dish_name)
+            return None
+
+        return DishEnrichmentResult.model_validate_json(response.text)
+    except ValidationError as e:
+        logger.error("Gemini returned invalid JSON schema for dish '%s': %s", dish_name, e)
+        return None
+    except Exception as e:
+        if isinstance(e, errors.APIError):
+            logger.warning(
+                "Gemini API error (rate limit / server error), retrying for dish '%s': %s",
+                dish_name,
+                e,
+            )
+            raise e
+        logger.exception("Unexpected error enriching dish '%s': %s", dish_name, e)
+        return None
