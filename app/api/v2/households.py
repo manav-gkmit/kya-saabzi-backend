@@ -48,7 +48,7 @@ async def update_my_household(
     if not household:
         raise HTTPException(status_code=404, detail="Household not found")
 
-    if household.admin_id is None or household.admin_id != user.id:
+    if household.admin_id and household.admin_id != user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only the household admin can update these settings.",
