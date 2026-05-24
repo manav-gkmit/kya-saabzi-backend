@@ -1,10 +1,8 @@
 """Asynchronous dish search & creation HTTP endpoints for V2 API."""
 
-from __future__ import annotations
-
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.db import get_async_db
@@ -47,8 +45,8 @@ async def search_dishes_endpoint(
 @limiter.limit("10/minute")
 async def create_dish(
     request: Request,
-    dish_data: DishCreate,
     background_tasks: BackgroundTasks,
+    dish_data: DishCreate = Body(...),
     user: User = Depends(get_current_user_async),
     db: AsyncSession = Depends(get_async_db),
 ):
