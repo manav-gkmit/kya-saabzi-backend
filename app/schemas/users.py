@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated
 
-from pydantic import UUID4, BaseModel, ConfigDict, EmailStr, StringConstraints
+from pydantic import UUID4, BaseModel, ConfigDict, EmailStr, StringConstraints, model_validator
 
 PasswordStr = Annotated[
     str,
@@ -43,5 +43,12 @@ class UserRead(BaseModel):
 
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    email: EmailStr | None = None
+    username: str | None = None
     password: PasswordStr
+
+    @model_validator(mode="after")
+    def check_identifier(self) -> "UserLogin":
+        if not self.email and not self.username:
+            raise ValueError("Either email or username must be provided")
+        return self
