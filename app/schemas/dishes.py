@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from typing import Annotated, Literal
 
@@ -40,6 +42,16 @@ class DishCreate(DishBase):
     prep_time_minutes: int | None = Field(None, examples=[30])
     calories_estimate: int | None = Field(None, examples=[350])
     ingredients: list[str] | None = Field(None, examples=[["spinach", "paneer", "garlic"]])
+
+    @field_validator("note", mode="before")
+    @classmethod
+    def normalize_note(cls, v: object) -> str | None:
+        if v is None:
+            return None
+        if isinstance(v, str):
+            stripped = v.strip()
+            return stripped or None
+        return v  # let pydantic raise a type error
 
 
 class DishSearchResponse(BaseModel):

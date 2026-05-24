@@ -70,7 +70,7 @@ pip install -r requirements.txt
 Create a `.env` file in the root directory (refer to `.env.example`):
 ```env
 SECRET_KEY="your-super-secret-key"
-DATABASE_URL="postgres://user:password@localhost:5432/kyasaabzi"
+DATABASE_URL="postgresql+psycopg://user:password@localhost:5432/kyasaabzi"
 CORS_ORIGINS=["http://localhost:3000"]
 ```
 
@@ -89,6 +89,18 @@ uvicorn app.main:app --reload
 ```
 The API will be available at: [http://localhost:8000](http://localhost:8000)  
 Interactive Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+
+---
+
+## 🔁 API Versions (v1 → v2 Migration)
+
+- The backend serves both versions:
+  - `/api/v1/*` (deprecated)
+  - `/api/v2/*` (current)
+- For any `/api/v1/*` response, the backend emits migration headers (CORS-exposed) so the frontend can show a “Moved to v2” migration button:
+  - `Deprecation: true`
+  - `X-API-Migration-Target: /api/v2`
+  - `X-API-Migration-Message: ...`
 
 ---
 
