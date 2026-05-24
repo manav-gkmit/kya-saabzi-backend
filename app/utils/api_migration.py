@@ -28,4 +28,3 @@ def add_v1_migration_headers(*, path: str, response: Response) -> None:
     response.headers["Warning"] = f'299 - "{V1_MIGRATION_MESSAGE} Sunset={V1_SUNSET}"'
     response.headers["X-API-Migration-Message"] = V1_MIGRATION_MESSAGE
     response.headers["X-API-Migration-Target"] = V2_TARGET
-

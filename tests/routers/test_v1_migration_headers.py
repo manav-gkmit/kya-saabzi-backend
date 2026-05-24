@@ -35,4 +35,3 @@ async def test_v2_async_client_no_migration_headers(async_client: AsyncClient) -
     assert response.status_code == 401
     assert response.headers.get("Deprecation") is None
     assert response.headers.get("X-API-Migration-Target") is None
-

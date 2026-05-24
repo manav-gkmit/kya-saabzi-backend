@@ -45,4 +45,3 @@ def configure_logging(*, debug: bool) -> BoundLogger:
     )
     stream_handler.setFormatter(formatter)
     return structlog.get_logger(__name__)
-

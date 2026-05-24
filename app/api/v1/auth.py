@@ -2,7 +2,7 @@ import hashlib
 import logging
 from typing import NoReturn
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status, Body
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.database.db import get_db
