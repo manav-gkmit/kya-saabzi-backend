@@ -1,8 +1,8 @@
-import logging
+from __future__ import annotations
+
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
@@ -13,44 +13,11 @@ from starlette.responses import Response
 from app.api.v1.api import api_router
 from app.api.v2.api import api_v2_router
 from app.config import settings
+from app.utils.api_migration import add_v1_migration_headers, migration_exposed_headers
+from app.utils.logging_config import configure_logging
 from app.utils.rate_limit import limiter
 
-stream_handler = logging.StreamHandler()
-logging.basicConfig(
-    level=logging.DEBUG if settings.DEBUG else logging.INFO,
-    format="%(message)s",
-    handlers=[stream_handler],
-    force=True,
-)
-timestamper = structlog.processors.TimeStamper(fmt="iso")
-structlog.configure(
-    processors=[
-        structlog.contextvars.merge_contextvars,
-        structlog.stdlib.add_logger_name,
-        structlog.stdlib.add_log_level,
-        structlog.stdlib.PositionalArgumentsFormatter(),
-        timestamper,
-        structlog.processors.StackInfoRenderer(),
-        structlog.processors.format_exc_info,
-        structlog.stdlib.ProcessorFormatter.wrap_for_formatter,
-    ],
-    logger_factory=structlog.stdlib.LoggerFactory(),
-    wrapper_class=structlog.stdlib.BoundLogger,
-    cache_logger_on_first_use=True,
-)
-formatter = structlog.stdlib.ProcessorFormatter(
-    foreign_pre_chain=[
-        structlog.stdlib.add_logger_name,
-        structlog.stdlib.add_log_level,
-        timestamper,
-    ],
-    processors=[
-        structlog.stdlib.ProcessorFormatter.remove_processors_meta,
-        structlog.processors.JSONRenderer(),
-    ],
-)
-stream_handler.setFormatter(formatter)
-logger = structlog.get_logger(__name__)
+logger = configure_logging(debug=settings.DEBUG)
 
 
 @asynccontextmanager
@@ -67,9 +34,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(lifespan=lifespan)
 
-# --- Rate limiting ---
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from fastapi import status
+
+# --- Rate limiting & Exception Handlers ---
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    logger.error("Validation error for %s %s: %s", request.method, request.url.path, exc.errors())
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content={"detail": exc.errors()},
+    )
 
 # --- CORS ---
 app.add_middleware(
@@ -78,6 +57,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=migration_exposed_headers(),
 )
 
 # --- Routers ---
@@ -91,6 +71,7 @@ async def log_requests(request: Request, call_next: RequestResponseEndpoint) -> 
     response = None
     try:
         response = await call_next(request)
+        add_v1_migration_headers(path=request.url.path, response=response)
         return response
     except Exception as exc:
         logger.exception(
