@@ -44,9 +44,5 @@ def configure_logging(*, debug: bool) -> BoundLogger:
         ],
     )
     stream_handler.setFormatter(formatter)
-<<<<<<< HEAD
-    return structlog.get_logger(__name__)
-=======
-    return structlog.get_logger()
 
->>>>>>> a372d49 (refactor(logging): initialize module-level loggers correctly)
+    return structlog.get_logger()
