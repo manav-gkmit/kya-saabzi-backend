@@ -98,9 +98,12 @@ Interactive Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
   - `/api/v1/*` (deprecated)
   - `/api/v2/*` (current)
 - For any `/api/v1/*` response, the backend emits migration headers (CORS-exposed) so the frontend can show a “Moved to v2” migration button:
-  - `Deprecation: true`
-  - `X-API-Migration-Target: /api/v2`
-  - `X-API-Migration-Message: ...`
+  - `Deprecation`: indicates deprecation status.
+  - `Sunset`: provides sunset metadata/date.
+  - `Link`: linking rel info.
+  - `Warning`: warning text.
+  - `X-API-Migration-Target`: migration target (e.g., `/api/v2`).
+  - `X-API-Migration-Message`: human-readable message.
 
 ---
 
