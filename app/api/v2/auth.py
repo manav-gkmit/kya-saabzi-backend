@@ -1,7 +1,5 @@
 """Asynchronous authentication router for V2 API."""
 
-from __future__ import annotations
-
 import hashlib
 import logging
 from typing import NoReturn
@@ -136,10 +134,15 @@ async def login_for_access_token(
     request: Request, user_data: UserLogin, db: AsyncSession = Depends(get_async_db)
 ):
     """Authenticate and return an access + refresh token pair asynchronously."""
-    fp = _fingerprint(user_data.email.lower())
+    identifier = user_data.email or user_data.username
+    fp = _fingerprint(identifier.lower())
     logger.info("Login attempt identifier=%s", fp)
 
-    user = (await db.execute(select(User).where(User.email == user_data.email))).scalars().first()
+    if user_data.email:
+        stmt = select(User).where(User.email == user_data.email)
+    else:
+        stmt = select(User).where(User.username == user_data.username)
+    user = (await db.execute(stmt)).scalars().first()
     if not user or not verify_password(user_data.password, user.hashed_password):
         logger.warning("Login failed identifier=%s", fp)
         raise HTTPException(

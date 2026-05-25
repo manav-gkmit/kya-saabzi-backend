@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from functools import lru_cache
 
-from pydantic import SecretStr
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,7 +20,22 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     GEMINI_API_KEY: SecretStr | None = None
 
-    CORS_ORIGINS: list
+    CORS_ORIGINS: list[str]
+
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def _normalize_database_url(cls, v: str) -> str:
+        allowed = ["postgresql+psycopg", "postgresql", "postgres"]
+        scheme = v.split("://")[0] if "://" in v else ""
+        if scheme not in allowed:
+            raise ValueError(f"Unsupported database scheme: {scheme}")
+        if v.startswith("postgresql+psycopg://"):
+            return v
+        if v.startswith("postgres://"):
+            return v.replace("postgres://", "postgresql+psycopg://", 1)
+        if v.startswith("postgresql://"):
+            return v.replace("postgresql://", "postgresql+psycopg://", 1)
+        return v
 
 
 @lru_cache

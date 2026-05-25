@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from app.database.db import get_db
@@ -43,8 +43,8 @@ def search_dishes_endpoint(
 @limiter.limit("10/minute")
 def create_dish(
     request: Request,
-    dish_data: DishCreate,
     background_tasks: BackgroundTasks,
+    dish_data: DishCreate = Body(...),
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

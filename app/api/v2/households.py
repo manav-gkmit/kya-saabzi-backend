@@ -1,7 +1,5 @@
 """Asynchronous household management HTTP endpoints for V2 API."""
 
-from __future__ import annotations
-
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status

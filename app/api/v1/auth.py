@@ -112,10 +112,14 @@ def login_for_access_token(
     db: Session = Depends(get_db),
 ):
     """Authenticate and return an access + refresh token pair."""
-    email_fp = _fingerprint_identifier(user_data.email.lower())
+    identifier = user_data.email or user_data.username
+    email_fp = _fingerprint_identifier(identifier.lower())
     logger.info("Login attempt identifier=%s", email_fp)
 
-    user = db.query(User).filter(User.email == user_data.email).first()
+    if user_data.email:
+        user = db.query(User).filter(User.email == user_data.email).first()
+    else:
+        user = db.query(User).filter(User.username == user_data.username).first()
     if not user or not verify_password(user_data.password, user.hashed_password):  # type: ignore[arg-type]
         logger.warning("Login failed identifier=%s", email_fp)
         raise HTTPException(
