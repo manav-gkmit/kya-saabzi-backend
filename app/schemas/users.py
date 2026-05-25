@@ -44,7 +44,7 @@ class UserRead(BaseModel):
 
 class UserLogin(BaseModel):
     email: EmailStr | None = None
-    username: str | None = None
+    username: Username | None = None
     password: PasswordStr
 
     @model_validator(mode="after")
