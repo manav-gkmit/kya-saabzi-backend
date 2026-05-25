@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     @field_validator("DATABASE_URL")
     @classmethod
     def _normalize_database_url(cls, v: str) -> str:
+        allowed = ["postgresql+psycopg", "postgresql", "postgres"]
+        scheme = v.split("://")[0] if "://" in v else ""
+        if scheme not in allowed:
+            raise ValueError(f"Unsupported database scheme: {scheme}")
         if v.startswith("postgresql+psycopg://"):
             return v
         if v.startswith("postgres://"):
