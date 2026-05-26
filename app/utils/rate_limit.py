@@ -18,7 +18,7 @@ def get_user_id_or_ip(request: Request) -> str:
     if auth.lower().startswith("bearer "):
         token = auth.split(" ", 1)[1]
         try:
-            from app.utils.jwt import decode_access_token
+            from app.utils.tokens import decode_access_token
 
             payload = decode_access_token(token)
             user_id = payload.get("sub")

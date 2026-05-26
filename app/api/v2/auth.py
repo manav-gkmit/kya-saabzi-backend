@@ -15,11 +15,11 @@ from app.models.users import User
 from app.schemas.auth import RefreshRequest, Token, TokenRefresh
 from app.schemas.users import UserCreate, UserLogin, UserRead
 from app.utils.auth import get_current_user_async
-from app.utils.jwt import create_access_token
 from app.utils.rate_limit import limiter
 from app.utils.security import get_password_hash, verify_password
 from app.utils.tokens import (
     TokenReuseError,
+    create_access_token,
     create_refresh_token_async,
     revoke_all_for_user_async,
     revoke_token_async,

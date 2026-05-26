@@ -4,15 +4,21 @@ from __future__ import annotations
 
 import logging
 import secrets
+import uuid
 from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
+import jwt
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models.refresh_tokens import RefreshToken
+
+ALGORITHM = settings.ALGORITHM
+SECRET_KEY = settings.SECRET_KEY
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +33,46 @@ class TokenReuseError(Exception):
     def __init__(self, user_id: UUID) -> None:
         self.user_id = user_id
         super().__init__("Token reuse detected. All sessions revoked.")
+
+
+def create_access_token(
+    subject: str,
+    expires_delta: timedelta | None = None,
+    include_jti: bool = False,
+) -> str:
+    """Create a signed JWT access token.
+
+    Args:
+        subject: The token subject (typically user ID).
+        expires_delta: Custom expiry. Defaults to ACCESS_TOKEN_EXPIRE_MINUTES.
+        include_jti: Whether to add a unique token identifier claim.
+
+    Returns:
+        Encoded JWT string.
+    """
+    now = datetime.now(UTC)
+    if expires_delta is None:
+        expires_delta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    payload: dict = {
+        "sub": str(subject),
+        "iat": int(now.timestamp()),
+        "exp": int((now + expires_delta).timestamp()),
+    }
+    if include_jti:
+        payload["jti"] = str(uuid.uuid4())
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def decode_access_token(token: str) -> dict:
+    """Decode and verify a JWT access token.
+
+    Raises:
+        jwt.InvalidTokenError: If the token is malformed, expired, or tampered.
+    """
+    try:
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except jwt.InvalidTokenError:
+        raise
 
 
 def create_refresh_token(db: Session, user_id: UUID) -> str:
