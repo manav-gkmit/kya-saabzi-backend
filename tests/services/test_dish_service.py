@@ -478,7 +478,7 @@ class TestEnrichDishBackgroundTask:
             calories_estimate=200,
         )
 
-        with patch("app.services.dish.AsyncSessionLocal") as mock_session_cls:
+        with patch("app.services.dish.enrichment.SessionLocal") as mock_session_cls:
             mock_db = AsyncMock(spec=AsyncSession)
             mock_session_cls.return_value.__aenter__.return_value = mock_db
             mock_db.get.return_value = dish
