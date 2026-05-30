@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 from uuid import UUID
 
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.households import Household
 from app.models.users import User
@@ -13,8 +14,8 @@ from app.models.users import User
 logger = logging.getLogger(__name__)
 
 
-def update_household_preferences(
-    db: Session,
+async def update_household_preferences(
+    db: AsyncSession,
     household: Household,
     *,
     name: str | None = None,
@@ -23,13 +24,13 @@ def update_household_preferences(
     """Apply partial updates to a household's name and/or preferences.
 
     Args:
-        db: Active database session.
+        db: Active async database session.
         household: Household ORM instance to mutate.
         name: New household name (if provided).
         preferences_patch: Dict to shallow-merge into existing preferences.
 
     Returns:
-        The updated household (caller should commit).
+        The updated household.
     """
     if name:
         household.name = name
@@ -38,12 +39,12 @@ def update_household_preferences(
         current = household.preferences or {}
         household.preferences = {**current, **preferences_patch}
 
-    db.flush()
+    await db.flush()
     return household
 
 
-def create_private_household(
-    db: Session,
+async def create_private_household(
+    db: AsyncSession,
     user: User,
 ) -> Household:
     """Create a new single-member household for *user*.
@@ -56,10 +57,10 @@ def create_private_household(
         admin_id=user.id,
     )
     db.add(household)
-    db.flush()
+    await db.flush()
 
     user.household_id = household.id
-    db.flush()
+    await db.flush()
 
     logger.info(
         "Created private household=%s for user=%s",
@@ -69,8 +70,8 @@ def create_private_household(
     return household
 
 
-def reassign_admin_if_needed(
-    db: Session,
+async def reassign_admin_if_needed(
+    db: AsyncSession,
     household: Household,
     leaving_user_id: UUID,
 ) -> None:
@@ -78,18 +79,21 @@ def reassign_admin_if_needed(
     if household.admin_id != leaving_user_id:
         return
 
-    next_admin = (
-        db.query(User)
-        .filter(
+    stmt = (
+        select(User)
+        .where(
             User.household_id == household.id,
             User.id != leaving_user_id,
         )
         .order_by(User.created_at.asc())
-        .first()
+        .limit(1)
     )
+    result = await db.execute(stmt)
+    next_admin = result.scalars().first()
+
     if next_admin:
         household.admin_id = next_admin.id
-        db.flush()
+        await db.flush()
         logger.info(
             "Reassigned admin of household=%s to user=%s",
             household.id,
@@ -97,12 +101,15 @@ def reassign_admin_if_needed(
         )
 
 
-def cleanup_empty_household(db: Session, household_id: UUID) -> None:
+async def cleanup_empty_household(db: AsyncSession, household_id: UUID) -> None:
     """Delete a household if it has zero members remaining."""
-    remaining = db.query(User).filter(User.household_id == household_id).count()
+    stmt = select(func.count()).select_from(User).where(User.household_id == household_id)
+    result = await db.execute(stmt)
+    remaining = result.scalar() or 0
+
     if remaining == 0:
-        old = db.get(Household, household_id)
+        old = await db.get(Household, household_id)
         if old:
-            db.delete(old)
-            db.flush()
+            await db.delete(old)
+            await db.flush()
             logger.info("Deleted empty household=%s", household_id)
