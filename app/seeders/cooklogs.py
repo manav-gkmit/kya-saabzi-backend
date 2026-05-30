@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import random
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.db import SessionLocal
 from app.models.cooklogs import CookLog
@@ -11,7 +13,7 @@ from app.models.dishes import Dish
 from app.models.users import User
 
 
-def seed_cooklogs(*, db: Session | None = None) -> None:
+async def seed_cooklogs(*, db: AsyncSession | None = None) -> None:
     standalone = db is None
     if standalone:
         db = SessionLocal()
@@ -20,11 +22,16 @@ def seed_cooklogs(*, db: Session | None = None) -> None:
 
     try:
         # Skip if we've already seeded any cooklogs (avoids duplicates on container restart).
-        if db.query(CookLog).count() > 0:
+        count_res = await db.execute(select(func.count()).select_from(CookLog))
+        if (count_res.scalar() or 0) > 0:
             return
 
-        users = db.query(User).order_by(User.created_at).limit(100).all()
-        dishes = db.query(Dish).order_by(Dish.id).limit(100).all()
+        users_res = await db.execute(select(User).order_by(User.created_at).limit(100))
+        users = list(users_res.scalars().all())
+        
+        dishes_res = await db.execute(select(Dish).order_by(Dish.id).limit(100))
+        dishes = list(dishes_res.scalars().all())
+        
         if not users or not dishes:
             raise RuntimeError("Seed users and dishes before seeding cooklogs.")
 
@@ -45,14 +52,14 @@ def seed_cooklogs(*, db: Session | None = None) -> None:
             )
 
         db.add_all(cooklogs)
-        db.commit()
+        await db.commit()
     except Exception:
-        db.rollback()
+        await db.rollback()
         raise
     finally:
         if standalone:
-            db.close()
+            await db.close()
 
 
 if __name__ == "__main__":
-    seed_cooklogs()
+    asyncio.run(seed_cooklogs())

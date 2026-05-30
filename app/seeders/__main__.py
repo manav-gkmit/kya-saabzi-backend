@@ -1,4 +1,4 @@
-from __future__ import annotations
+import asyncio
 
 from app.database.db import SessionLocal
 
@@ -7,15 +7,12 @@ from .dishes import seed_dishes
 from .users import seed_users
 
 
-def main() -> None:
-    db = SessionLocal()
-    try:
-        seed_users(db=db)
-        seed_dishes(db=db)
-        seed_cooklogs(db=db)
-    finally:
-        db.close()
+async def main() -> None:
+    async with SessionLocal() as db:
+        await seed_users(db=db)
+        await seed_dishes(db=db)
+        await seed_cooklogs(db=db)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

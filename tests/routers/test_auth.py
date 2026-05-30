@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
+import pytest
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.households import Household
+
+pytestmark = pytest.mark.asyncio
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -25,13 +28,13 @@ _REG_PAYLOAD = {
 }
 
 
-def _register(client: TestClient, **overrides) -> dict:
+async def _register(async_client: AsyncClient, **overrides):
     payload = {**_REG_PAYLOAD, **overrides}
-    return client.post(REG_URL, json=payload)
+    return await async_client.post(REG_URL, json=payload)
 
 
-def _login(client: TestClient, email: str, password: str) -> dict:
-    return client.post(LOGIN_URL, json={"email": email, "password": password})
+async def _login(async_client: AsyncClient, email: str, password: str):
+    return await async_client.post(LOGIN_URL, json={"email": email, "password": password})
 
 
 # ---------------------------------------------------------------------------
@@ -42,41 +45,41 @@ def _login(client: TestClient, email: str, password: str) -> dict:
 class TestRegister:
     """POST /api/v1/auth/register"""
 
-    def test_creates_user_and_household(self, client: TestClient) -> None:
-        resp = _register(client)
+    async def test_creates_user_and_household(self, async_client: AsyncClient) -> None:
+        resp = await _register(async_client)
         assert resp.status_code == 201
         body = resp.json()
         assert body["email"] == "newuser@example.com"
         assert body["username"] == "newuser"
         assert body["household_id"] is not None
 
-    def test_register_with_invite_code(
+    async def test_register_with_invite_code(
         self,
-        client: TestClient,
-        db_session: Session,
-        test_household: Household,
+        async_client: AsyncClient,
+        async_db_session: AsyncSession,
+        async_test_household: Household,
     ) -> None:
-        resp = _register(
-            client,
+        resp = await _register(
+            async_client,
             email="invite@example.com",
             username="inviteuser",
-            invite_code=test_household.invite_code,
+            invite_code=async_test_household.invite_code,
         )
         assert resp.status_code == 201
-        assert resp.json()["household_id"] == str(test_household.id)
+        assert resp.json()["household_id"] == str(async_test_household.id)
 
-    def test_invalid_invite_code(self, client: TestClient) -> None:
-        resp = _register(client, invite_code="ZZZZZZZZ")
+    async def test_invalid_invite_code(self, async_client: AsyncClient) -> None:
+        resp = await _register(async_client, invite_code="ZZZZZZZZ")
         assert resp.status_code == 404
 
-    def test_duplicate_email(self, client: TestClient) -> None:
-        _register(client)
-        resp = _register(client, username="different")
+    async def test_duplicate_email(self, async_client: AsyncClient) -> None:
+        await _register(async_client)
+        resp = await _register(async_client, username="different")
         assert resp.status_code == 409
 
-    def test_duplicate_username(self, client: TestClient) -> None:
-        _register(client)
-        resp = _register(client, email="other@example.com")
+    async def test_duplicate_username(self, async_client: AsyncClient) -> None:
+        await _register(async_client)
+        resp = await _register(async_client, email="other@example.com")
         assert resp.status_code == 409
 
 
@@ -88,23 +91,23 @@ class TestRegister:
 class TestLogin:
     """POST /api/v1/auth/login"""
 
-    def test_success(self, client: TestClient) -> None:
-        _register(client)
-        resp = _login(client, "newuser@example.com", "StrongP@ss1")
+    async def test_success(self, async_client: AsyncClient) -> None:
+        await _register(async_client)
+        resp = await _login(async_client, "newuser@example.com", "StrongP@ss1")
         assert resp.status_code == 200
         body = resp.json()
         assert "access_token" in body
         assert "refresh_token" in body
         assert body["user"]["email"] == "newuser@example.com"
 
-    def test_wrong_email(self, client: TestClient) -> None:
-        _register(client)
-        resp = _login(client, "wrong@example.com", "StrongP@ss1")
+    async def test_wrong_email(self, async_client: AsyncClient) -> None:
+        await _register(async_client)
+        resp = await _login(async_client, "wrong@example.com", "StrongP@ss1")
         assert resp.status_code == 401
 
-    def test_wrong_password(self, client: TestClient) -> None:
-        _register(client)
-        resp = _login(client, "newuser@example.com", "wrongpass")
+    async def test_wrong_password(self, async_client: AsyncClient) -> None:
+        await _register(async_client)
+        resp = await _login(async_client, "newuser@example.com", "wrongpass")
         assert resp.status_code == 401
 
 
@@ -116,31 +119,31 @@ class TestLogin:
 class TestRefresh:
     """POST /api/v1/auth/refresh"""
 
-    def test_rotation_returns_new_pair(self, client: TestClient) -> None:
-        _register(client)
-        login_resp = _login(client, "newuser@example.com", "StrongP@ss1")
+    async def test_rotation_returns_new_pair(self, async_client: AsyncClient) -> None:
+        await _register(async_client)
+        login_resp = await _login(async_client, "newuser@example.com", "StrongP@ss1")
         old_refresh = login_resp.json()["refresh_token"]
 
-        resp = client.post(REFRESH_URL, json={"refresh_token": old_refresh})
+        resp = await async_client.post(REFRESH_URL, json={"refresh_token": old_refresh})
         assert resp.status_code == 200
         body = resp.json()
         assert "access_token" in body
         assert body["refresh_token"] != old_refresh
 
-    def test_reused_token_returns_401(self, client: TestClient) -> None:
-        _register(client)
-        login_resp = _login(client, "newuser@example.com", "StrongP@ss1")
+    async def test_reused_token_returns_401(self, async_client: AsyncClient) -> None:
+        await _register(async_client)
+        login_resp = await _login(async_client, "newuser@example.com", "StrongP@ss1")
         old_refresh = login_resp.json()["refresh_token"]
 
         # First use — valid rotation
-        client.post(REFRESH_URL, json={"refresh_token": old_refresh})
+        await async_client.post(REFRESH_URL, json={"refresh_token": old_refresh})
 
         # Second use — reuse detected
-        resp = client.post(REFRESH_URL, json={"refresh_token": old_refresh})
+        resp = await async_client.post(REFRESH_URL, json={"refresh_token": old_refresh})
         assert resp.status_code == 401
 
-    def test_invalid_token_returns_401(self, client: TestClient) -> None:
-        resp = client.post(REFRESH_URL, json={"refresh_token": "fake-token"})
+    async def test_invalid_token_returns_401(self, async_client: AsyncClient) -> None:
+        resp = await async_client.post(REFRESH_URL, json={"refresh_token": "fake-token"})
         assert resp.status_code == 401
 
 
@@ -152,20 +155,20 @@ class TestRefresh:
 class TestLogout:
     """POST /api/v1/auth/logout and /logout/all"""
 
-    def test_single_device_logout(self, client: TestClient) -> None:
-        _register(client)
-        login_resp = _login(client, "newuser@example.com", "StrongP@ss1")
+    async def test_single_device_logout(self, async_client: AsyncClient) -> None:
+        await _register(async_client)
+        login_resp = await _login(async_client, "newuser@example.com", "StrongP@ss1")
         refresh = login_resp.json()["refresh_token"]
 
-        resp = client.post(LOGOUT_URL, json={"refresh_token": refresh})
+        resp = await async_client.post(LOGOUT_URL, json={"refresh_token": refresh})
         assert resp.status_code == 204
 
-    def test_logout_all_sessions(
+    async def test_logout_all_sessions(
         self,
-        client: TestClient,
-        auth_headers: dict,
+        async_client: AsyncClient,
+        async_auth_headers: dict,
     ) -> None:
-        resp = client.post(LOGOUT_ALL_URL, headers=auth_headers)
+        resp = await async_client.post(LOGOUT_ALL_URL, headers=async_auth_headers)
         assert resp.status_code == 204
 
 
@@ -177,11 +180,11 @@ class TestLogout:
 class TestProfile:
     """GET /api/v1/auth/me"""
 
-    def test_authenticated(self, client: TestClient, auth_headers: dict) -> None:
-        resp = client.get(ME_URL, headers=auth_headers)
+    async def test_authenticated(self, async_client: AsyncClient, async_auth_headers: dict) -> None:
+        resp = await async_client.get(ME_URL, headers=async_auth_headers)
         assert resp.status_code == 200
         assert resp.json()["email"] == "test@example.com"
 
-    def test_unauthenticated(self, client: TestClient) -> None:
-        resp = client.get(ME_URL)
+    async def test_unauthenticated(self, async_client: AsyncClient) -> None:
+        resp = await async_client.get(ME_URL)
         assert resp.status_code in (401, 403)
