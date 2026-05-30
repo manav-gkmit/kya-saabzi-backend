@@ -13,7 +13,7 @@ from app.config import settings
 # ---------------------------------------------------------------------------
 
 _async_url = settings.DATABASE_URL.replace(
-    "postgresql+psycopg://",
+    "postgresql://",
     "postgresql+psycopg://",
 )
 

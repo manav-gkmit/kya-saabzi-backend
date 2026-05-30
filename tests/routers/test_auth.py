@@ -136,7 +136,8 @@ class TestRefresh:
         old_refresh = login_resp.json()["refresh_token"]
 
         # First use — valid rotation
-        await async_client.post(REFRESH_URL, json={"refresh_token": old_refresh})
+        first_resp = await async_client.post(REFRESH_URL, json={"refresh_token": old_refresh})
+        assert first_resp.status_code == 200
 
         # Second use — reuse detected
         resp = await async_client.post(REFRESH_URL, json={"refresh_token": old_refresh})

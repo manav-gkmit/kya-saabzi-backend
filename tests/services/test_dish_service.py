@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, AsyncMock, patch
 from uuid import UUID
 
 import pytest
@@ -433,8 +433,8 @@ class TestEnrichDishBackgroundTask:
     async def test_skips_nonexistent_dish(self) -> None:
         import uuid
 
-        with patch("app.services.dish.AsyncSessionLocal") as mock_session_cls:
-            mock_db = MagicMock()
+        with patch("app.services.dish.enrichment.SessionLocal") as mock_session_cls:
+            mock_db = AsyncMock()
             mock_session_cls.return_value.__aenter__.return_value = mock_db
             mock_db.get.return_value = None
             await enrich_dish_background_task(uuid.uuid4())
@@ -454,11 +454,11 @@ class TestEnrichDishBackgroundTask:
         dish.prep_time_minutes = 20
         await async_db_session.commit()
 
-        with patch("app.services.dish.AsyncSessionLocal") as mock_session_cls:
-            mock_db = MagicMock()
+        with patch("app.services.dish.enrichment.SessionLocal") as mock_session_cls:
+            mock_db = AsyncMock()
             mock_session_cls.return_value.__aenter__.return_value = mock_db
             mock_db.get.return_value = dish
-            with patch("app.services.dish.enrich_dish_with_gemini") as mock_llm:
+            with patch("app.services.dish.enrichment.enrich_dish_with_gemini") as mock_llm:
                 await enrich_dish_background_task(dish.id)
                 mock_llm.assert_not_called()
 
@@ -479,25 +479,25 @@ class TestEnrichDishBackgroundTask:
         )
 
         with patch("app.services.dish.AsyncSessionLocal") as mock_session_cls:
-            mock_db = MagicMock(spec=AsyncSession)
+            mock_db = AsyncMock(spec=AsyncSession)
             mock_session_cls.return_value.__aenter__.return_value = mock_db
             mock_db.get.return_value = dish
             with (
-                patch("app.services.dish.enrich_dish_with_gemini", return_value=mock_result),
-                patch("app.services.dish._attach_ingredients_to_dish") as mock_attach,
+                patch("app.services.dish.enrichment.enrich_dish_with_gemini", return_value=mock_result),
+                patch("app.services.dish.enrichment.attach_ingredients_to_dish", new_callable=AsyncMock) as mock_attach,
             ):
                 await enrich_dish_background_task(dish.id)
-                mock_attach.assert_called_once()
+                mock_attach.assert_awaited_once()
                 assert dish.calories_estimate == 200
                 assert dish.prep_time_minutes == 15
-                mock_db.commit.assert_called_once()
+                mock_db.commit.assert_awaited_once()
 
     async def test_rolls_back_on_exception(self) -> None:
         import uuid
 
-        with patch("app.services.dish.AsyncSessionLocal") as mock_session_cls:
-            mock_db = MagicMock()
+        with patch("app.services.dish.enrichment.SessionLocal") as mock_session_cls:
+            mock_db = AsyncMock()
             mock_session_cls.return_value.__aenter__.return_value = mock_db
             mock_db.get.side_effect = Exception("db error")
             await enrich_dish_background_task(uuid.uuid4())
-            mock_db.rollback.assert_called_once()
+            mock_db.rollback.assert_awaited_once()
