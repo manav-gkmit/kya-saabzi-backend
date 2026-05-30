@@ -9,11 +9,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from app.database.db import get_async_db
+from app.database.db import get_db
 from app.models.cooklogs import CookLog
 from app.models.users import User
 from app.schemas.cooklogs import CookLogRead
-from app.utils.auth import get_current_user_async
+from app.utils.auth import get_current_user
 from app.utils.rate_limit import get_user_id_or_ip, limiter
 
 router = APIRouter(prefix="/cooklogs", tags=["cooklogs"])
@@ -22,13 +22,13 @@ logger = logging.getLogger(__name__)
 
 @router.get("/", response_model=list[CookLogRead])
 async def get_cooklogs(
-    user: User = Depends(get_current_user_async),
-    db: AsyncSession = Depends(get_async_db),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
     limit: int = Query(default=10, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
 ):
-    """Retrieve all cook logs for the currently authenticated user asynchronously."""
-    logger.info("Fetching cook logs asynchronously for user_id=%s", user.id)
+    """Retrieve all cook logs for the currently authenticated user."""
+    logger.info("Fetching cook logs for user_id=%s", user.id)
     stmt = (
         select(CookLog)
         .options(joinedload(CookLog.dish))
@@ -39,7 +39,7 @@ async def get_cooklogs(
     )
     result = await db.execute(stmt)
     logs = list(result.scalars().all())
-    logger.info("Fetched %s cook logs asynchronously for user_id=%s", len(logs), user.id)
+    logger.info("Fetched %s cook logs for user_id=%s", len(logs), user.id)
     return logs
 
 
@@ -48,10 +48,10 @@ async def get_cooklogs(
 async def delete_cooklog(
     request: Request,
     cooklog_id: uuid.UUID,
-    db: AsyncSession = Depends(get_async_db),
-    current_user: User = Depends(get_current_user_async),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
-    """Deletes a cooklog entry asynchronously for the current user."""
+    """Deletes a cooklog entry for the current user."""
     stmt = select(CookLog).where(
         CookLog.id == cooklog_id,
         CookLog.household_id == current_user.household_id,
@@ -61,7 +61,7 @@ async def delete_cooklog(
 
     if not cooklog or cooklog.deleted_at is not None:
         logger.warning(
-            "Cook log delete failed asynchronously: not found cooklog_id=%s user_id=%s",
+            "Cook log delete failed: not found cooklog_id=%s user_id=%s",
             cooklog_id,
             current_user.id,
         )
@@ -72,7 +72,7 @@ async def delete_cooklog(
 
     if cooklog.user_id != current_user.id:
         logger.warning(
-            "Cook log delete forbidden asynchronously cooklog_id=%s owner_id=%s requester_id=%s",
+            "Cook log delete forbidden cooklog_id=%s owner_id=%s requester_id=%s",
             cooklog_id,
             cooklog.user_id,
             current_user.id,
@@ -84,6 +84,4 @@ async def delete_cooklog(
 
     cooklog.deleted_at = datetime.now(UTC)
     await db.commit()
-    logger.info(
-        "Cook log soft-deleted asynchronously cooklog_id=%s user_id=%s", cooklog_id, current_user.id
-    )
+    logger.info("Cook log soft-deleted cooklog_id=%s user_id=%s", cooklog_id, current_user.id)

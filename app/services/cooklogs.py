@@ -1,12 +1,12 @@
 from uuid import UUID
 
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.cooklogs import CookLog
 
 
-def create_cook_log(
-    db: Session,
+async def create_cook_log(
+    db: AsyncSession,
     *,
     household_id: UUID,
     user_id: UUID,
@@ -23,5 +23,5 @@ def create_cook_log(
         rating=rating,
     )
     db.add(log)
-    db.flush()
+    await db.flush()
     return log

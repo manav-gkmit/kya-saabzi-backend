@@ -6,11 +6,13 @@ import uuid
 
 import pytest
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.users import User
 from app.utils.auth import get_current_household, get_current_user
-from app.utils.jwt import create_access_token
+from app.utils.tokens import create_access_token
+
+pytestmark = pytest.mark.asyncio
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -33,31 +35,31 @@ class _FakeCreds:
 class TestGetCurrentUser:
     """Verify JWT-based user resolution."""
 
-    def test_valid_token_returns_user(
+    async def test_valid_token_returns_user(
         self,
-        db_session: Session,
-        test_user: User,
+        async_db_session: AsyncSession,
+        async_test_user: User,
     ) -> None:
-        token = create_access_token(subject=str(test_user.id))
-        user = get_current_user(creds=_FakeCreds(credentials=token), db=db_session)
-        assert user.id == test_user.id
+        token = create_access_token(subject=str(async_test_user.id))
+        user = await get_current_user(creds=_FakeCreds(credentials=token), db=async_db_session)
+        assert user.id == async_test_user.id
 
-    def test_no_credentials_raises_401(self) -> None:
+    async def test_no_credentials_raises_401(self) -> None:
         with pytest.raises(HTTPException) as exc:
-            get_current_user(creds=None, db=None)
+            await get_current_user(creds=None, db=None)
         assert exc.value.status_code == 401
 
-    def test_non_bearer_scheme_raises_401(self) -> None:
+    async def test_non_bearer_scheme_raises_401(self) -> None:
         with pytest.raises(HTTPException) as exc:
-            get_current_user(creds=_FakeCreds(scheme="Basic", credentials="x"), db=None)
+            await get_current_user(creds=_FakeCreds(scheme="Basic", credentials="x"), db=None)
         assert exc.value.status_code == 401
 
-    def test_invalid_token_raises_401(self, db_session: Session) -> None:
+    async def test_invalid_token_raises_401(self, async_db_session: AsyncSession) -> None:
         with pytest.raises(HTTPException) as exc:
-            get_current_user(creds=_FakeCreds(credentials="garbage"), db=db_session)
+            await get_current_user(creds=_FakeCreds(credentials="garbage"), db=async_db_session)
         assert exc.value.status_code == 401
 
-    def test_token_without_sub_raises_401(self, db_session: Session) -> None:
+    async def test_token_without_sub_raises_401(self, async_db_session: AsyncSession) -> None:
         """A token with no 'sub' claim should be rejected."""
         import jwt as pyjwt
 
@@ -69,17 +71,17 @@ class TestGetCurrentUser:
             algorithm=settings.ALGORITHM,
         )
         with pytest.raises(HTTPException) as exc:
-            get_current_user(creds=_FakeCreds(credentials=token), db=db_session)
+            await get_current_user(creds=_FakeCreds(credentials=token), db=async_db_session)
         assert exc.value.status_code == 401
 
-    def test_non_uuid_sub_raises_401(self, db_session: Session) -> None:
+    async def test_non_uuid_sub_raises_401(self, async_db_session: AsyncSession) -> None:
         """A token whose 'sub' is not a valid UUID should be rejected."""
         token = create_access_token(subject="not-a-uuid")
         with pytest.raises(HTTPException) as exc:
-            get_current_user(creds=_FakeCreds(credentials=token), db=db_session)
+            await get_current_user(creds=_FakeCreds(credentials=token), db=async_db_session)
         assert exc.value.status_code == 401
 
-    def test_non_string_sub_raises_401(self, db_session: Session) -> None:
+    async def test_non_string_sub_raises_401(self, async_db_session: AsyncSession) -> None:
         """A token whose 'sub' is an integer (not a string) should be rejected."""
         import jwt as pyjwt
 
@@ -91,15 +93,15 @@ class TestGetCurrentUser:
             algorithm=settings.ALGORITHM,
         )
         with pytest.raises(HTTPException) as exc:
-            get_current_user(creds=_FakeCreds(credentials=token), db=db_session)
+            await get_current_user(creds=_FakeCreds(credentials=token), db=async_db_session)
         assert exc.value.status_code == 401
 
-    def test_deleted_user_raises_401(self, db_session: Session) -> None:
+    async def test_deleted_user_raises_401(self, async_db_session: AsyncSession) -> None:
         """Token for a user ID that doesn't exist in the DB."""
         fake_id = str(uuid.uuid4())
         token = create_access_token(subject=fake_id)
         with pytest.raises(HTTPException) as exc:
-            get_current_user(creds=_FakeCreds(credentials=token), db=db_session)
+            await get_current_user(creds=_FakeCreds(credentials=token), db=async_db_session)
         assert exc.value.status_code == 401
 
 
@@ -111,9 +113,9 @@ class TestGetCurrentUser:
 class TestGetCurrentHousehold:
     """Verify household resolution from authenticated user."""
 
-    def test_user_with_household_returns_uuid(self, test_user: User) -> None:
-        result = get_current_household(user=test_user)
-        assert result == test_user.household_id
+    def test_user_with_household_returns_uuid(self, async_test_user: User) -> None:
+        result = get_current_household(user=async_test_user)
+        assert result == async_test_user.household_id
 
     def test_user_without_household_raises_403(self) -> None:
         """A user with household_id=None should get 403."""

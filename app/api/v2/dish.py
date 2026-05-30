@@ -5,16 +5,16 @@ import logging
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.db import get_async_db
+from app.database.db import get_db
 from app.models.users import User
 from app.schemas.dishes import DishCreate, DishRead, DishSearchResponse
-from app.services.cooklogs_async import create_cook_log_async
+from app.services.cooklogs import create_cook_log
 from app.services.dish import (
-    enrich_dish_background_task_async,
-    find_or_create_dish_async,
-    search_dishes_async,
+    enrich_dish_background_task,
+    find_or_create_dish,
+    search_dishes,
 )
-from app.utils.auth import get_current_user_async
+from app.utils.auth import get_current_user
 from app.utils.rate_limit import limiter
 
 router = APIRouter(prefix="/dishes", tags=["dishes"])
@@ -26,19 +26,17 @@ logger = logging.getLogger(__name__)
 async def search_dishes_endpoint(
     request: Request,
     q: str,
-    user: User = Depends(get_current_user_async),
-    db: AsyncSession = Depends(get_async_db),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
     limit: int = Query(default=5, ge=1, le=50),
     offset: int = Query(default=0, ge=0),
 ):
-    """Search for dishes by name using fuzzy matching asynchronously."""
+    """Search for dishes by name using fuzzy matching."""
     q = q.lower().strip()
     if len(q) < 3:
         return []
 
-    return await search_dishes_async(
-        db, q, household_id=user.household_id, limit=limit, offset=offset
-    )
+    return await search_dishes(db, q, household_id=user.household_id, limit=limit, offset=offset)
 
 
 @router.post("/", response_model=DishRead)
@@ -47,13 +45,13 @@ async def create_dish(
     request: Request,
     background_tasks: BackgroundTasks,
     dish_data: DishCreate = Body(...),
-    user: User = Depends(get_current_user_async),
-    db: AsyncSession = Depends(get_async_db),
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    """Log a cooked dish asynchronously."""
-    logger.info("Dish log request user_id=%s input=%s asynchronously", user.id, dish_data.name)
+    """Log a cooked dish."""
+    logger.info("Dish log request user_id=%s input=%s", user.id, dish_data.name)
 
-    dish = await find_or_create_dish_async(
+    dish = await find_or_create_dish(
         db,
         dish_data.name,
         household_id=user.household_id,
@@ -65,7 +63,7 @@ async def create_dish(
         ingredients=dish_data.ingredients,
     )
 
-    await create_cook_log_async(
+    await create_cook_log(
         db,
         household_id=user.household_id,
         user_id=user.id,
@@ -82,10 +80,10 @@ async def create_dish(
         or (dish.calories_estimate is None)
         or (dish.prep_time_minutes is None)
     ):
-        background_tasks.add_task(enrich_dish_background_task_async, dish.id)
+        background_tasks.add_task(enrich_dish_background_task, dish.id)
 
     logger.info(
-        "Recorded cook event asynchronously for dish_id=%s rating=%s",
+        "Recorded cook event for dish_id=%s rating=%s",
         dish.id,
         dish_data.rating,
     )

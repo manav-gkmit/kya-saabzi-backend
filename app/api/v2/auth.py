@@ -9,21 +9,21 @@ from sqlalchemy import or_, select
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.db import get_async_db
+from app.database.db import get_db
 from app.models.households import Household
 from app.models.users import User
 from app.schemas.auth import RefreshRequest, Token, TokenRefresh
 from app.schemas.users import UserCreate, UserLogin, UserRead
-from app.utils.auth import get_current_user_async
+from app.utils.auth import get_current_user
 from app.utils.rate_limit import limiter
 from app.utils.security import get_password_hash, verify_password
 from app.utils.tokens import (
     TokenReuseError,
     create_access_token,
-    create_refresh_token_async,
-    revoke_all_for_user_async,
-    revoke_token_async,
-    validate_and_rotate_async,
+    create_refresh_token,
+    revoke_all_for_user,
+    revoke_token,
+    validate_and_rotate,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -51,7 +51,7 @@ def _conflict_from_integrity_error(exc: Exception, fp: str) -> NoReturn:
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")
 async def register_user(
-    request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_async_db)
+    request: Request, user_data: UserCreate, db: AsyncSession = Depends(get_db)
 ):
     """Register a user and create (or join) a household asynchronously."""
     fp = _fingerprint(f"{user_data.email.lower()}:{user_data.username.lower()}")
@@ -131,7 +131,7 @@ async def register_user(
 @router.post("/login", response_model=Token)
 @limiter.limit("5/minute")
 async def login_for_access_token(
-    request: Request, user_data: UserLogin, db: AsyncSession = Depends(get_async_db)
+    request: Request, user_data: UserLogin, db: AsyncSession = Depends(get_db)
 ):
     """Authenticate and return an access + refresh token pair asynchronously."""
     identifier = user_data.email or user_data.username
@@ -150,7 +150,7 @@ async def login_for_access_token(
         )
 
     access_token = create_access_token(subject=str(user.id))
-    refresh_token = await create_refresh_token_async(db, user.id)
+    refresh_token = await create_refresh_token(db, user.id)
     await db.commit()
 
     logger.info("Login successful user_id=%s asynchronously", user.id)
@@ -165,11 +165,11 @@ async def login_for_access_token(
 @router.post("/refresh", response_model=TokenRefresh)
 @limiter.limit("10/minute")
 async def refresh_access_token(
-    request: Request, body: RefreshRequest, db: AsyncSession = Depends(get_async_db)
+    request: Request, body: RefreshRequest, db: AsyncSession = Depends(get_db)
 ):
     """Exchange a valid refresh token for a new access + refresh pair asynchronously."""
     try:
-        old_record, new_refresh = await validate_and_rotate_async(db, body.refresh_token)
+        old_record, new_refresh = await validate_and_rotate(db, body.refresh_token)
     except TokenReuseError as exc:
         await db.commit()
         logger.warning("Token reuse detected — user_id=%s, all sessions revoked", exc.user_id)
@@ -183,22 +183,22 @@ async def refresh_access_token(
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(body: RefreshRequest, db: AsyncSession = Depends(get_async_db)):
+async def logout(body: RefreshRequest, db: AsyncSession = Depends(get_db)):
     """Revoke the provided refresh token asynchronously (single-device logout)."""
-    await revoke_token_async(db, body.refresh_token)
+    await revoke_token(db, body.refresh_token)
     await db.commit()
 
 
 @router.post("/logout/all", status_code=status.HTTP_204_NO_CONTENT)
 async def logout_all_sessions(
-    user: User = Depends(get_current_user_async), db: AsyncSession = Depends(get_async_db)
+    user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """Revoke all refresh tokens for the authenticated user asynchronously (all-device logout)."""
-    await revoke_all_for_user_async(db, user.id)
+    await revoke_all_for_user(db, user.id)
     await db.commit()
 
 
 @router.get("/me", response_model=UserRead)
-async def get_current_user_profile(user: User = Depends(get_current_user_async)):
+async def get_current_user_profile(user: User = Depends(get_current_user)):
     """Returns the authenticated user's profile asynchronously."""
     return user

@@ -1,9 +1,9 @@
-"""Dish search & creation HTTP endpoints — thin adapter over services."""
+"""V1 dish routes — deprecated, internally async."""
 
 import logging
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, Query, Request
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.db import get_db
 from app.models.users import User
@@ -23,11 +23,11 @@ logger = logging.getLogger(__name__)
 
 @router.get("/search", response_model=list[DishSearchResponse])
 @limiter.limit("20/minute")
-def search_dishes_endpoint(
+async def search_dishes_endpoint(
     request: Request,
     q: str,
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     limit: int = Query(default=5, ge=1, le=50),
     offset: int = Query(default=0, ge=0),
 ):
@@ -36,22 +36,22 @@ def search_dishes_endpoint(
     if len(q) < 3:
         return []
 
-    return search_dishes(db, q, household_id=user.household_id, limit=limit, offset=offset)
+    return await search_dishes(db, q, household_id=user.household_id, limit=limit, offset=offset)
 
 
 @router.post("/", response_model=DishRead)
 @limiter.limit("10/minute")
-def create_dish(
+async def create_dish(
     request: Request,
     background_tasks: BackgroundTasks,
     dish_data: DishCreate = Body(...),
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Log a cooked dish — finds or creates the canonical entry, then records the cook event."""
     logger.info("Dish log request user_id=%s input=%s", user.id, dish_data.name)
 
-    dish = find_or_create_dish(
+    dish = await find_or_create_dish(
         db,
         dish_data.name,
         household_id=user.household_id,
@@ -63,7 +63,7 @@ def create_dish(
         ingredients=dish_data.ingredients,
     )
 
-    create_cook_log(
+    await create_cook_log(
         db,
         household_id=user.household_id,
         user_id=user.id,
@@ -72,8 +72,8 @@ def create_dish(
         rating=dish_data.rating,
     )
 
-    db.commit()
-    db.refresh(dish)
+    await db.commit()
+    await db.refresh(dish)
 
     if not (dish.ingredients and dish.calories_estimate and dish.prep_time_minutes):
         background_tasks.add_task(enrich_dish_background_task, dish.id)

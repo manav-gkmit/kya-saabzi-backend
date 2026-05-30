@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from sqlalchemy.orm import Session
+import asyncio
+
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.db import SessionLocal
 from app.models.dishes import Dish, Ingredient
 
 
-def seed_dishes(*, db: Session | None = None) -> None:
+async def seed_dishes(*, db: AsyncSession | None = None) -> None:
     standalone = db is None
     if standalone:
         db = SessionLocal()
@@ -30,7 +33,8 @@ def seed_dishes(*, db: Session | None = None) -> None:
         db_ingredients: dict[str, Ingredient] = {}
         for ing_data in ingredients_list:
             name = str(ing_data["name"])
-            ing = db.query(Ingredient).filter(Ingredient.name == name).first()
+            res = await db.execute(select(Ingredient).where(Ingredient.name == name))
+            ing = res.scalars().first()
             if ing is None:
                 ing = Ingredient(**ing_data)
                 db.add(ing)
@@ -96,19 +100,26 @@ def seed_dishes(*, db: Session | None = None) -> None:
         for d_data in dishes_list:
             ingredient_names = list(d_data.pop("ingredients"))
             name = str(d_data["name"])
-            dish = db.query(Dish).filter(Dish.name == name).first()
+            res = await db.execute(select(Dish).where(Dish.name == name))
+            dish = res.scalars().first()
             if dish is None:
                 dish = Dish(**d_data)
                 db.add(dish)
             else:
                 for key, value in d_data.items():
                     setattr(dish, key, value)
+
+            # Use sync append since ingredients is loaded/managed here
             dish.ingredients = [db_ingredients[str(n)] for n in ingredient_names]
 
-        db.commit()
+        await db.commit()
     except Exception:
-        db.rollback()
+        await db.rollback()
         raise
     finally:
         if standalone:
-            db.close()
+            await db.close()
+
+
+if __name__ == "__main__":
+    asyncio.run(seed_dishes())

@@ -1,78 +1,40 @@
-import difflib
-from uuid import UUID
+"""Dish search by name with fuzzy matching."""
+
+from difflib import SequenceMatcher
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import Session
 
 from app.database.helpers import escape_like
 from app.models.dishes import Dish
 
-# Upper bound on candidate rows fetched from DB before Python-level similarity scoring.
-# Keeps memory usage O(1) regardless of table size.
-_SEARCH_CANDIDATE_LIMIT = 100
 
-
-def search_dishes(
-    db: Session,
-    query: str,
-    *,
-    household_id: UUID,
-    limit: int = 5,
-    offset: int = 0,
-) -> list[dict]:
-    q_escaped = escape_like(query)
-    rows = (
-        db.query(Dish.id, Dish.name)
-        .filter(Dish.name.ilike(f"%{q_escaped}%", escape="\\"))
-        .filter((Dish.household_id == household_id) | (Dish.household_id.is_(None)))
-        .limit(_SEARCH_CANDIDATE_LIMIT)
-        .all()
-    )
-
-    q_lower = query.lower()
-    scored: list[dict] = [
-        {
-            "id": dish_id,
-            "name": dish_name,
-            "similarity": difflib.SequenceMatcher(None, q_lower, dish_name.lower()).ratio(),
-        }
-        for dish_id, dish_name in rows
-    ]
-
-    scored.sort(key=lambda x: x["similarity"], reverse=True)
-    return scored[offset : offset + limit]
-
-
-async def search_dishes_async(
+async def search_dishes(
     db: AsyncSession,
     query: str,
     *,
-    household_id: UUID,
+    household_id,
     limit: int = 5,
     offset: int = 0,
 ) -> list[dict]:
-    q_escaped = escape_like(query)
+    """Return dishes matching *query* ordered by similarity score."""
+    safe_q = escape_like(query)
     stmt = (
-        select(Dish.id, Dish.name)
+        select(Dish)
         .where(
-            Dish.name.ilike(f"%{q_escaped}%", escape="\\"),
+            Dish.name.ilike(f"%{safe_q}%", escape="\\"),
             (Dish.household_id == household_id) | (Dish.household_id.is_(None)),
         )
-        .limit(_SEARCH_CANDIDATE_LIMIT)
+        .order_by(Dish.household_id.is_(None), Dish.name)
+        .limit(limit)
+        .offset(offset)
     )
     result = await db.execute(stmt)
-    rows = result.all()
+    dishes = result.scalars().all()
 
-    q_lower = query.lower()
-    scored: list[dict] = [
-        {
-            "id": dish_id,
-            "name": dish_name,
-            "similarity": difflib.SequenceMatcher(None, q_lower, dish_name.lower()).ratio(),
-        }
-        for dish_id, dish_name in rows
-    ]
-
-    scored.sort(key=lambda x: x["similarity"], reverse=True)
-    return scored[offset : offset + limit]
+    scored = []
+    for d in dishes:
+        ratio = SequenceMatcher(None, query, d.name.lower()).ratio()
+        scored.append({"dish": d, "score": round(ratio, 3)})
+    scored.sort(key=lambda x: x["score"], reverse=True)
+    return scored

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import os
 
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.db import SessionLocal
 from app.models.households import Household
@@ -10,7 +12,7 @@ from app.models.users import User
 from app.utils.security import get_password_hash
 
 
-def seed_users(*, db: Session | None = None) -> None:
+async def seed_users(*, db: AsyncSession | None = None) -> None:
     standalone = db is None
     if standalone:
         db = SessionLocal()
@@ -18,11 +20,12 @@ def seed_users(*, db: Session | None = None) -> None:
     assert db is not None
 
     try:
-        household = db.query(Household).filter(Household.name == "Test Family").first()
+        result = await db.execute(select(Household).where(Household.name == "Test Family"))
+        household = result.scalars().first()
         if household is None:
             household = Household(name="Test Family")
             db.add(household)
-            db.flush()
+            await db.flush()
 
         force_password = os.environ.get("SEEDER_FORCE_PASSWORD", "").strip().lower() in {
             "1",
@@ -35,7 +38,8 @@ def seed_users(*, db: Session | None = None) -> None:
         for i in range(1, 11):
             email = f"user{i}@example.com"
             username = f"user{i}"
-            user = db.query(User).filter(User.email == email).first()
+            res = await db.execute(select(User).where(User.email == email))
+            user = res.scalars().first()
             if user is None:
                 user = User(
                     email=email,
@@ -51,18 +55,18 @@ def seed_users(*, db: Session | None = None) -> None:
                     user.hashed_password = seed_password
             users.append(user)
 
-        db.flush()
+        await db.flush()
         if household.admin_id is None and users:
             household.admin_id = users[0].id
 
-        db.commit()
+        await db.commit()
     except Exception:
-        db.rollback()
+        await db.rollback()
         raise
     finally:
         if standalone:
-            db.close()
+            await db.close()
 
 
 if __name__ == "__main__":
-    seed_users()
+    asyncio.run(seed_users())

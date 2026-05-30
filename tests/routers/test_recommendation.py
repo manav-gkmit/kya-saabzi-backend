@@ -4,13 +4,16 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
+import pytest
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.cooklogs import CookLog
 from app.models.dishes import Dish
 from app.models.households import Household
 from app.models.users import User
+
+pytestmark = pytest.mark.asyncio
 
 BASE_URL = "/api/v1/recommend/"
 
@@ -20,8 +23,8 @@ BASE_URL = "/api/v1/recommend/"
 # ---------------------------------------------------------------------------
 
 
-def _seed_dishes_and_logs(
-    db: Session,
+async def _seed_dishes_and_logs(
+    db: AsyncSession,
     user: User,
     household: Household,
     count: int = 3,
@@ -35,7 +38,7 @@ def _seed_dishes_and_logs(
             meal_type="lunch",
         )
         db.add(dish)
-        db.flush()
+        await db.flush()
         log = CookLog(
             user_id=user.id,
             dish_id=dish.id,
@@ -44,7 +47,7 @@ def _seed_dishes_and_logs(
         )
         db.add(log)
         dishes.append(dish)
-    db.commit()
+    await db.commit()
     return dishes
 
 
@@ -57,22 +60,22 @@ class TestGetRecommendation:
     """GET /api/v1/recommend/"""
 
     @patch("app.services.recommendation.random.uniform", return_value=5.0)
-    def test_returns_recommendations(
+    async def test_returns_recommendations(
         self,
         mock_rand,
-        client: TestClient,
-        db_session: Session,
-        test_user: User,
-        test_household: Household,
-        auth_headers: dict,
+        async_client: AsyncClient,
+        async_db_session: AsyncSession,
+        async_test_user: User,
+        async_test_household: Household,
+        async_auth_headers: dict,
     ) -> None:
         # Bypass cooldown so recently-seeded dishes aren't filtered out
-        test_household.preferences = {"include_recently_cooked": True}
-        db_session.commit()
+        async_test_household.preferences = {"include_recently_cooked": True}
+        await async_db_session.commit()
 
-        _seed_dishes_and_logs(db_session, test_user, test_household, 5)
+        await _seed_dishes_and_logs(async_db_session, async_test_user, async_test_household, 5)
 
-        resp = client.get(f"{BASE_URL}?meal_type=lunch", headers=auth_headers)
+        resp = await async_client.get(f"{BASE_URL}?meal_type=lunch", headers=async_auth_headers)
         assert resp.status_code == 200
         results = resp.json()
         assert len(results) > 0
@@ -80,45 +83,45 @@ class TestGetRecommendation:
         assert "score_breakdown" in results[0]
 
     @patch("app.services.recommendation.random.uniform", return_value=5.0)
-    def test_with_explicit_meal_type(
+    async def test_with_explicit_meal_type(
         self,
         mock_rand,
-        client: TestClient,
-        db_session: Session,
-        test_user: User,
-        test_household: Household,
-        auth_headers: dict,
+        async_client: AsyncClient,
+        async_db_session: AsyncSession,
+        async_test_user: User,
+        async_test_household: Household,
+        async_auth_headers: dict,
     ) -> None:
-        test_household.preferences = {"include_recently_cooked": True}
-        db_session.commit()
+        async_test_household.preferences = {"include_recently_cooked": True}
+        await async_db_session.commit()
 
         # Seed dinner dishes
         names = ["tikka", "korma", "biryani"]
         for name in names:
-            dish = Dish(name=name, household_id=test_household.id, meal_type="dinner")
-            db_session.add(dish)
-            db_session.flush()
-            db_session.add(
+            dish = Dish(name=name, household_id=async_test_household.id, meal_type="dinner")
+            async_db_session.add(dish)
+            await async_db_session.flush()
+            async_db_session.add(
                 CookLog(
-                    user_id=test_user.id,
+                    user_id=async_test_user.id,
                     dish_id=dish.id,
-                    household_id=test_household.id,
+                    household_id=async_test_household.id,
                     rating=4,
                 )
             )
-        db_session.commit()
+        await async_db_session.commit()
 
-        resp = client.get(f"{BASE_URL}?meal_type=dinner", headers=auth_headers)
+        resp = await async_client.get(f"{BASE_URL}?meal_type=dinner", headers=async_auth_headers)
         assert resp.status_code == 200
 
-    def test_no_recommendations_returns_404(
+    async def test_no_recommendations_returns_404(
         self,
-        client: TestClient,
-        auth_headers: dict,
+        async_client: AsyncClient,
+        async_auth_headers: dict,
     ) -> None:
-        resp = client.get(BASE_URL, headers=auth_headers)
+        resp = await async_client.get(BASE_URL, headers=async_auth_headers)
         assert resp.status_code == 404
 
-    def test_unauthenticated(self, client: TestClient) -> None:
-        resp = client.get(BASE_URL)
+    async def test_unauthenticated(self, async_client: AsyncClient) -> None:
+        resp = await async_client.get(BASE_URL)
         assert resp.status_code in (401, 403)

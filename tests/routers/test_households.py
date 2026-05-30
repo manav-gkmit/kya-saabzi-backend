@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
+import pytest
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.households import Household
 from app.models.users import User
-from app.utils.jwt import create_access_token
+from app.utils.tokens import create_access_token
+
+pytestmark = pytest.mark.asyncio
 
 ME_URL = "/api/v1/households/me"
 MEMBERS_URL = "/api/v1/households/me/members"
@@ -23,20 +26,20 @@ LEAVE_URL = "/api/v1/households/leave"
 
 
 class TestGetMyHousehold:
-    def test_returns_household(
+    async def test_returns_household(
         self,
-        client: TestClient,
-        auth_headers: dict,
-        test_household: Household,
+        async_client: AsyncClient,
+        async_auth_headers: dict,
+        async_test_household: Household,
     ) -> None:
-        resp = client.get(ME_URL, headers=auth_headers)
+        resp = await async_client.get(ME_URL, headers=async_auth_headers)
         assert resp.status_code == 200
         body = resp.json()
-        assert body["id"] == str(test_household.id)
+        assert body["id"] == str(async_test_household.id)
         assert "invite_code" in body
 
-    def test_unauthenticated(self, client: TestClient) -> None:
-        resp = client.get(ME_URL)
+    async def test_unauthenticated(self, async_client: AsyncClient) -> None:
+        resp = await async_client.get(ME_URL)
         assert resp.status_code in (401, 403)
 
 
@@ -46,42 +49,52 @@ class TestGetMyHousehold:
 
 
 class TestUpdateMyHousehold:
-    def test_admin_updates_name(
+    async def test_admin_updates_name(
         self,
-        client: TestClient,
-        auth_headers: dict,
+        async_client: AsyncClient,
+        async_auth_headers: dict,
     ) -> None:
-        resp = client.patch(
+        resp = await async_client.patch(
             ME_URL,
             json={"name": "New Name"},
-            headers=auth_headers,
+            headers=async_auth_headers,
         )
         assert resp.status_code == 200
         assert resp.json()["name"] == "New Name"
 
-    def test_admin_updates_preferences(
+    async def test_admin_updates_preferences(
         self,
-        client: TestClient,
-        auth_headers: dict,
+        async_client: AsyncClient,
+        async_auth_headers: dict,
     ) -> None:
-        resp = client.patch(
+        resp = await async_client.patch(
             ME_URL,
             json={"preferences": {"is_vegetarian": True}},
-            headers=auth_headers,
+            headers=async_auth_headers,
         )
         assert resp.status_code == 200
 
-    def test_non_admin_returns_403(
+    async def test_non_admin_returns_403(
         self,
-        client: TestClient,
-        db_session: Session,
-        test_user: User,
-        other_user: User,
+        async_client: AsyncClient,
+        async_db_session: AsyncSession,
+        async_test_user: User,
+        async_test_household: Household,
     ) -> None:
+        other_user = User(
+            email="other3@example.com",
+            username="otheruser3",
+            hashed_password="password",
+            household_id=async_test_household.id,
+        )
+        async_db_session.add(other_user)
+        await async_db_session.commit()
+        await async_db_session.refresh(other_user)
+
         # test_user fixture sets admin_id on test_household
         token = create_access_token(subject=str(other_user.id))
         headers = {"Authorization": f"Bearer {token}"}
-        resp = client.patch(
+        resp = await async_client.patch(
             ME_URL,
             json={"name": "Nope"},
             headers=headers,
@@ -95,19 +108,28 @@ class TestUpdateMyHousehold:
 
 
 class TestGetMembers:
-    def test_returns_members(
+    async def test_returns_members(
         self,
-        client: TestClient,
-        db_session: Session,
-        test_user: User,
-        other_user: User,
-        auth_headers: dict,
+        async_client: AsyncClient,
+        async_db_session: AsyncSession,
+        async_test_user: User,
+        async_test_household: Household,
+        async_auth_headers: dict,
     ) -> None:
-        resp = client.get(MEMBERS_URL, headers=auth_headers)
+        other_user = User(
+            email="other4@example.com",
+            username="otheruser4",
+            hashed_password="password",
+            household_id=async_test_household.id,
+        )
+        async_db_session.add(other_user)
+        await async_db_session.commit()
+
+        resp = await async_client.get(MEMBERS_URL, headers=async_auth_headers)
         assert resp.status_code == 200
         members = resp.json()
         ids = {m["id"] for m in members}
-        assert str(test_user.id) in ids
+        assert str(async_test_user.id) in ids
         assert str(other_user.id) in ids
 
 
@@ -117,48 +139,52 @@ class TestGetMembers:
 
 
 class TestJoinHousehold:
-    def test_valid_invite_code(
+    async def test_valid_invite_code(
         self,
-        client: TestClient,
-        db_session: Session,
-        test_user: User,
-        other_household: Household,
-        auth_headers: dict,
+        async_client: AsyncClient,
+        async_db_session: AsyncSession,
+        async_test_user: User,
+        async_auth_headers: dict,
     ) -> None:
-        resp = client.post(
+        other_household = Household(name="Other Household")
+        async_db_session.add(other_household)
+        await async_db_session.commit()
+        await async_db_session.refresh(other_household)
+
+        resp = await async_client.post(
             JOIN_URL,
             json={"invite_code": other_household.invite_code},
-            headers=auth_headers,
+            headers=async_auth_headers,
         )
         assert resp.status_code == 200
         assert resp.json()["id"] == str(other_household.id)
 
-    def test_invalid_invite_code(
+    async def test_invalid_invite_code(
         self,
-        client: TestClient,
-        auth_headers: dict,
+        async_client: AsyncClient,
+        async_auth_headers: dict,
     ) -> None:
-        resp = client.post(
+        resp = await async_client.post(
             JOIN_URL,
             json={"invite_code": "ZZZZZZZZ"},
-            headers=auth_headers,
+            headers=async_auth_headers,
         )
         assert resp.status_code == 404
 
-    def test_already_member_is_noop(
+    async def test_already_member_is_noop(
         self,
-        client: TestClient,
-        db_session: Session,
-        test_household: Household,
-        auth_headers: dict,
+        async_client: AsyncClient,
+        async_db_session: AsyncSession,
+        async_test_household: Household,
+        async_auth_headers: dict,
     ) -> None:
-        resp = client.post(
+        resp = await async_client.post(
             JOIN_URL,
-            json={"invite_code": test_household.invite_code},
-            headers=auth_headers,
+            json={"invite_code": async_test_household.invite_code},
+            headers=async_auth_headers,
         )
         assert resp.status_code == 200
-        assert resp.json()["id"] == str(test_household.id)
+        assert resp.json()["id"] == str(async_test_household.id)
 
 
 # ---------------------------------------------------------------------------
@@ -167,29 +193,37 @@ class TestJoinHousehold:
 
 
 class TestLeaveHousehold:
-    def test_sole_member_stays(
+    async def test_sole_member_stays(
         self,
-        client: TestClient,
-        auth_headers: dict,
-        test_household: Household,
+        async_client: AsyncClient,
+        async_auth_headers: dict,
+        async_test_household: Household,
     ) -> None:
-        resp = client.post(LEAVE_URL, headers=auth_headers)
+        resp = await async_client.post(LEAVE_URL, headers=async_auth_headers)
         assert resp.status_code == 200
         # Should return the same household (no other members)
-        assert resp.json()["id"] == str(test_household.id)
+        assert resp.json()["id"] == str(async_test_household.id)
 
-    def test_leaves_creates_private(
+    async def test_leaves_creates_private(
         self,
-        client: TestClient,
-        db_session: Session,
-        test_user: User,
-        other_user: User,
-        test_household: Household,
-        auth_headers: dict,
+        async_client: AsyncClient,
+        async_db_session: AsyncSession,
+        async_test_user: User,
+        async_test_household: Household,
+        async_auth_headers: dict,
     ) -> None:
-        old_hh_id = str(test_household.id)
-        user_id = str(test_user.id)
-        resp = client.post(LEAVE_URL, headers=auth_headers)
+        other_user = User(
+            email="other5@example.com",
+            username="otheruser5",
+            hashed_password="password",
+            household_id=async_test_household.id,
+        )
+        async_db_session.add(other_user)
+        await async_db_session.commit()
+
+        old_hh_id = str(async_test_household.id)
+        user_id = str(async_test_user.id)
+        resp = await async_client.post(LEAVE_URL, headers=async_auth_headers)
         assert resp.status_code == 200
         new_hh = resp.json()
         assert new_hh["id"] != old_hh_id
@@ -202,53 +236,72 @@ class TestLeaveHousehold:
 
 
 class TestRemoveMember:
-    def test_admin_removes_member(
+    async def test_admin_removes_member(
         self,
-        client: TestClient,
-        db_session: Session,
-        test_user: User,
-        other_user: User,
-        auth_headers: dict,
+        async_client: AsyncClient,
+        async_db_session: AsyncSession,
+        async_test_user: User,
+        async_test_household: Household,
+        async_auth_headers: dict,
     ) -> None:
-        resp = client.delete(
+        other_user = User(
+            email="other6@example.com",
+            username="otheruser6",
+            hashed_password="password",
+            household_id=async_test_household.id,
+        )
+        async_db_session.add(other_user)
+        await async_db_session.commit()
+        await async_db_session.refresh(other_user)
+
+        resp = await async_client.delete(
             f"{MEMBERS_URL}/{other_user.id}",
-            headers=auth_headers,
+            headers=async_auth_headers,
         )
         assert resp.status_code == 204
 
-    def test_non_admin_returns_403(
+    async def test_non_admin_returns_403(
         self,
-        client: TestClient,
-        db_session: Session,
-        other_user: User,
+        async_client: AsyncClient,
+        async_db_session: AsyncSession,
+        async_test_household: Household,
     ) -> None:
+        other_user = User(
+            email="other7@example.com",
+            username="otheruser7",
+            hashed_password="password",
+            household_id=async_test_household.id,
+        )
+        async_db_session.add(other_user)
+        await async_db_session.commit()
+
         token = create_access_token(subject=str(other_user.id))
         headers = {"Authorization": f"Bearer {token}"}
-        resp = client.delete(
+        resp = await async_client.delete(
             f"{MEMBERS_URL}/{uuid.uuid4()}",
             headers=headers,
         )
         assert resp.status_code == 403
 
-    def test_remove_self_returns_400(
+    async def test_remove_self_returns_400(
         self,
-        client: TestClient,
-        test_user: User,
-        auth_headers: dict,
+        async_client: AsyncClient,
+        async_test_user: User,
+        async_auth_headers: dict,
     ) -> None:
-        resp = client.delete(
-            f"{MEMBERS_URL}/{test_user.id}",
-            headers=auth_headers,
+        resp = await async_client.delete(
+            f"{MEMBERS_URL}/{async_test_user.id}",
+            headers=async_auth_headers,
         )
         assert resp.status_code == 400
 
-    def test_remove_nonexistent_returns_404(
+    async def test_remove_nonexistent_returns_404(
         self,
-        client: TestClient,
-        auth_headers: dict,
+        async_client: AsyncClient,
+        async_auth_headers: dict,
     ) -> None:
-        resp = client.delete(
+        resp = await async_client.delete(
             f"{MEMBERS_URL}/{uuid.uuid4()}",
-            headers=auth_headers,
+            headers=async_auth_headers,
         )
         assert resp.status_code == 404
