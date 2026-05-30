@@ -84,6 +84,4 @@ async def delete_cooklog(
 
     cooklog.deleted_at = datetime.now(UTC)
     await db.commit()
-    logger.info(
-        "Cook log soft-deleted cooklog_id=%s user_id=%s", cooklog_id, current_user.id
-    )
+    logger.info("Cook log soft-deleted cooklog_id=%s user_id=%s", cooklog_id, current_user.id)

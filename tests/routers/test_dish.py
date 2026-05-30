@@ -101,7 +101,9 @@ class TestSearchDishes:
         async_db_session.add(
             Dish(name="chole bhature", household_id=async_test_household.id, meal_type="lunch")
         )
-        async_db_session.add(Dish(name="chole masala", household_id=async_test_household.id, meal_type="lunch"))
+        async_db_session.add(
+            Dish(name="chole masala", household_id=async_test_household.id, meal_type="lunch")
+        )
         await async_db_session.commit()
 
         resp = await async_client.get(f"{SEARCH_URL}?q=chole", headers=async_auth_headers)
@@ -137,7 +139,9 @@ class TestSearchDishes:
         await async_db_session.commit()
         await async_db_session.refresh(other_household)
 
-        async_db_session.add(Dish(name="secret dish", household_id=other_household.id, meal_type="lunch"))
+        async_db_session.add(
+            Dish(name="secret dish", household_id=other_household.id, meal_type="lunch")
+        )
         await async_db_session.commit()
 
         resp = await async_client.get(f"{SEARCH_URL}?q=secret", headers=async_auth_headers)
@@ -153,7 +157,9 @@ class TestSearchDishes:
     ) -> None:
         for i in range(5):
             async_db_session.add(
-                Dish(name=f"paneer dish {i}", household_id=async_test_household.id, meal_type="lunch")
+                Dish(
+                    name=f"paneer dish {i}", household_id=async_test_household.id, meal_type="lunch"
+                )
             )
         await async_db_session.commit()
 

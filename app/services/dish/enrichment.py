@@ -18,9 +18,7 @@ _ENRICHMENT_IN_PROGRESS: set[str] = set()
 _ENRICHMENT_LOCK = asyncio.Lock()
 
 
-async def _copy_metadata_if_exists(
-    db: AsyncSession, dish: Dish, dish_name_lower: str
-) -> bool:
+async def _copy_metadata_if_exists(db: AsyncSession, dish: Dish, dish_name_lower: str) -> bool:
     """Returns True if it found and copied metadata from an existing dish."""
     stmt = select(Dish).where(
         func.lower(Dish.name) == dish_name_lower,

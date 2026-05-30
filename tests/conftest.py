@@ -8,12 +8,11 @@ from datetime import UTC, datetime
 
 import pytest
 import pytest_asyncio
-from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import create_engine
 from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.database.db import get_db
@@ -22,8 +21,8 @@ from app.models.common import Base
 from app.models.households import Household
 from app.models.users import User
 from app.utils.auth import get_current_user
-from app.utils.tokens import create_access_token
 from app.utils.security import get_password_hash
+from app.utils.tokens import create_access_token
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
@@ -80,7 +79,6 @@ def _disable_rate_limit():
     limiter.enabled = False
     yield
     limiter.enabled = original
-
 
 
 # ---------------------------------------------------------------------------

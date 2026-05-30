@@ -77,12 +77,7 @@ async def get_household_members(
     offset: int = Query(default=0, ge=0),
 ):
     """List all users belonging to the current household."""
-    stmt = (
-        select(User)
-        .where(User.household_id == household_id)
-        .limit(limit)
-        .offset(offset)
-    )
+    stmt = select(User).where(User.household_id == household_id).limit(limit).offset(offset)
     result = await db.execute(stmt)
     return result.scalars().all()
 

@@ -13,8 +13,8 @@ from app.models.households import Household
 from app.models.users import User
 from app.services.dish import (
     _attach_ingredients_to_dish,
-    enrich_dish_background_task,
     create_cook_log,
+    enrich_dish_background_task,
     find_or_create_dish,
     search_dishes,
 )
@@ -68,7 +68,9 @@ class TestSearchDishes:
         await _seed_dish(async_db_session, "paneer butter masala", async_test_household.id)
         await async_db_session.commit()
 
-        results = await search_dishes(async_db_session, "paneer", household_id=async_test_household.id)
+        results = await search_dishes(
+            async_db_session, "paneer", household_id=async_test_household.id
+        )
         if len(results) > 1:
             assert results[0]["similarity"] >= results[1]["similarity"]
 
@@ -80,7 +82,9 @@ class TestSearchDishes:
         await _seed_dish(async_db_session, "aloo gobi", async_test_household.id)
         await async_db_session.commit()
 
-        results = await search_dishes(async_db_session, "zzzzz", household_id=async_test_household.id)
+        results = await search_dishes(
+            async_db_session, "zzzzz", household_id=async_test_household.id
+        )
         assert len(results) == 0
 
     async def test_household_scope_includes_global(
@@ -93,7 +97,9 @@ class TestSearchDishes:
         await _seed_dish(async_db_session, "chole masala", async_test_household.id)
         await async_db_session.commit()
 
-        results = await search_dishes(async_db_session, "chole", household_id=async_test_household.id)
+        results = await search_dishes(
+            async_db_session, "chole", household_id=async_test_household.id
+        )
         assert len(results) == 2
 
     async def test_other_household_dishes_excluded(
@@ -108,7 +114,9 @@ class TestSearchDishes:
         await _seed_dish(async_db_session, "biryani", household2.id)
         await async_db_session.commit()
 
-        results = await search_dishes(async_db_session, "biryani", household_id=async_test_household.id)
+        results = await search_dishes(
+            async_db_session, "biryani", household_id=async_test_household.id
+        )
         assert len(results) == 0
 
     async def test_pagination_limit(

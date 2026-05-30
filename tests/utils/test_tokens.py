@@ -48,9 +48,11 @@ class TestCreateRefreshToken:
         await async_db_session.commit()
 
         token_hash = RefreshToken.hash_token(raw)
-        result = await async_db_session.execute(select(RefreshToken).filter(RefreshToken.token_hash == token_hash))
+        result = await async_db_session.execute(
+            select(RefreshToken).filter(RefreshToken.token_hash == token_hash)
+        )
         record = result.scalars().first()
-        
+
         assert record is not None
         assert record.user_id == async_test_user.id
         assert record.revoked_at is None
@@ -64,7 +66,9 @@ class TestCreateRefreshToken:
         await async_db_session.commit()
 
         expected_hash = RefreshToken.hash_token(raw)
-        result = await async_db_session.execute(select(RefreshToken).filter(RefreshToken.user_id == async_test_user.id))
+        result = await async_db_session.execute(
+            select(RefreshToken).filter(RefreshToken.user_id == async_test_user.id)
+        )
         record = result.scalars().first()
         assert record.token_hash == expected_hash
 
@@ -137,7 +141,9 @@ class TestValidateAndRotate:
         await async_db_session.commit()
 
         result = await async_db_session.execute(
-            select(func.count()).select_from(RefreshToken).filter(
+            select(func.count())
+            .select_from(RefreshToken)
+            .filter(
                 RefreshToken.user_id == async_test_user.id,
                 RefreshToken.revoked_at.is_(None),
             )
@@ -155,7 +161,9 @@ class TestValidateAndRotate:
 
         # Manually expire the token
         token_hash = RefreshToken.hash_token(raw)
-        result = await async_db_session.execute(select(RefreshToken).filter(RefreshToken.token_hash == token_hash))
+        result = await async_db_session.execute(
+            select(RefreshToken).filter(RefreshToken.token_hash == token_hash)
+        )
         record = result.scalars().first()
         record.expires_at = datetime.now(UTC) - timedelta(hours=1)
         await async_db_session.commit()
@@ -186,7 +194,9 @@ class TestRevokeToken:
         assert result is True
 
         token_hash = RefreshToken.hash_token(raw)
-        result2 = await async_db_session.execute(select(RefreshToken).filter(RefreshToken.token_hash == token_hash))
+        result2 = await async_db_session.execute(
+            select(RefreshToken).filter(RefreshToken.token_hash == token_hash)
+        )
         record = result2.scalars().first()
         assert record.revoked_at is not None
 
@@ -231,7 +241,9 @@ class TestRevokeAllForUser:
         assert count == 3
 
         result = await async_db_session.execute(
-            select(func.count()).select_from(RefreshToken).filter(
+            select(func.count())
+            .select_from(RefreshToken)
+            .filter(
                 RefreshToken.user_id == async_test_user.id,
                 RefreshToken.revoked_at.is_(None),
             )

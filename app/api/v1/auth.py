@@ -71,9 +71,7 @@ async def register_user(
     # 1. Resolve household
     if user_data.invite_code:
         invite_code = user_data.invite_code.upper().strip()
-        result = await db.execute(
-            select(Household).where(Household.invite_code == invite_code)
-        )
+        result = await db.execute(select(Household).where(Household.invite_code == invite_code))
         household = result.scalars().first()
         if not household:
             raise HTTPException(

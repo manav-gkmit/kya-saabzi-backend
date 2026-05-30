@@ -204,7 +204,9 @@ class TestApplyCooldown:
         d1 = await _dish(async_db_session, "recent dish", async_test_household.id)
         d2 = await _dish(async_db_session, "old dish", async_test_household.id)
         await _log(async_db_session, async_test_household.id, async_test_user.id, d1.id, days_ago=1)
-        await _log(async_db_session, async_test_household.id, async_test_user.id, d2.id, days_ago=30)
+        await _log(
+            async_db_session, async_test_household.id, async_test_user.id, d2.id, days_ago=30
+        )
         await async_db_session.commit()
 
         engine = await HybridRecoEngine.create(async_db_session, async_test_household.id)

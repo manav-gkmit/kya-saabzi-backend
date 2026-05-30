@@ -28,10 +28,10 @@ async def seed_cooklogs(*, db: AsyncSession | None = None) -> None:
 
         users_res = await db.execute(select(User).order_by(User.created_at).limit(100))
         users = list(users_res.scalars().all())
-        
+
         dishes_res = await db.execute(select(Dish).order_by(Dish.id).limit(100))
         dishes = list(dishes_res.scalars().all())
-        
+
         if not users or not dishes:
             raise RuntimeError("Seed users and dishes before seeding cooklogs.")
 

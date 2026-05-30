@@ -108,7 +108,7 @@ async def seed_dishes(*, db: AsyncSession | None = None) -> None:
             else:
                 for key, value in d_data.items():
                     setattr(dish, key, value)
-            
+
             # Use sync append since ingredients is loaded/managed here
             dish.ingredients = [db_ingredients[str(n)] for n in ingredient_names]
 
