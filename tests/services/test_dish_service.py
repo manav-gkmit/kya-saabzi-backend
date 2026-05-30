@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import AsyncMock, patch
 from uuid import UUID
 
 import pytest
@@ -483,8 +483,13 @@ class TestEnrichDishBackgroundTask:
             mock_session_cls.return_value.__aenter__.return_value = mock_db
             mock_db.get.return_value = dish
             with (
-                patch("app.services.dish.enrichment.enrich_dish_with_gemini", return_value=mock_result),
-                patch("app.services.dish.enrichment.attach_ingredients_to_dish", new_callable=AsyncMock) as mock_attach,
+                patch(
+                    "app.services.dish.enrichment.enrich_dish_with_gemini", return_value=mock_result
+                ),
+                patch(
+                    "app.services.dish.enrichment.attach_ingredients_to_dish",
+                    new_callable=AsyncMock,
+                ) as mock_attach,
             ):
                 await enrich_dish_background_task(dish.id)
                 mock_attach.assert_awaited_once()
