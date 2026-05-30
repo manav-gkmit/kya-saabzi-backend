@@ -1,9 +1,12 @@
+"""V1 auth routes — deprecated, internally async."""
+
 import hashlib
 import logging
 from typing import NoReturn
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.db import get_db
 from app.models.households import Household
@@ -47,25 +50,31 @@ def _throw_conflict(detail: str, fingerprint: str) -> NoReturn:
 
 @router.post("/register", response_model=UserRead, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")
-def register_user(
+async def register_user(
     request: Request,
     user_data: UserCreate,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Register a user and create (or join) a household."""
     fp = _fingerprint_identifier(
         f"{user_data.email.lower()}:{user_data.username.lower()}",
     )
 
-    if db.query(User).filter(User.email == user_data.email).first():
+    result = await db.execute(select(User).where(User.email == user_data.email))
+    if result.scalars().first():
         _throw_conflict("Email already registered.", fp)
-    if db.query(User).filter(User.username == user_data.username).first():
+
+    result = await db.execute(select(User).where(User.username == user_data.username))
+    if result.scalars().first():
         _throw_conflict("Username is already taken.", fp)
 
     # 1. Resolve household
     if user_data.invite_code:
         invite_code = user_data.invite_code.upper().strip()
-        household = db.query(Household).filter(Household.invite_code == invite_code).first()
+        result = await db.execute(
+            select(Household).where(Household.invite_code == invite_code)
+        )
+        household = result.scalars().first()
         if not household:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -76,7 +85,7 @@ def register_user(
         household_name = user_data.household_name or f"{user_data.username}'s Home"
         household = Household(name=household_name)
         db.add(household)
-        db.flush()
+        await db.flush()
         is_new_household = True
 
     # 2. Create user
@@ -87,13 +96,13 @@ def register_user(
         household_id=household.id,
     )
     db.add(user)
-    db.flush()
+    await db.flush()
 
     if is_new_household:
         household.admin_id = user.id
 
-    db.commit()
-    db.refresh(user)
+    await db.commit()
+    await db.refresh(user)
 
     logger.info("User registered user_id=%s household_id=%s", user.id, household.id)
     return user
@@ -106,10 +115,10 @@ def register_user(
 
 @router.post("/login", response_model=Token)
 @limiter.limit("5/minute")
-def login_for_access_token(
+async def login_for_access_token(
     request: Request,
     user_data: UserLogin,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Authenticate and return an access + refresh token pair."""
     identifier = user_data.email or user_data.username
@@ -117,9 +126,11 @@ def login_for_access_token(
     logger.info("Login attempt identifier=%s", email_fp)
 
     if user_data.email:
-        user = db.query(User).filter(User.email == user_data.email).first()
+        result = await db.execute(select(User).where(User.email == user_data.email))
     else:
-        user = db.query(User).filter(User.username == user_data.username).first()
+        result = await db.execute(select(User).where(User.username == user_data.username))
+    user = result.scalars().first()
+
     if not user or not verify_password(user_data.password, user.hashed_password):  # type: ignore[arg-type]
         logger.warning("Login failed identifier=%s", email_fp)
         raise HTTPException(
@@ -128,8 +139,8 @@ def login_for_access_token(
         )
 
     access_token = create_access_token(subject=str(user.id))
-    refresh_token = create_refresh_token(db, user.id)
-    db.commit()
+    refresh_token = await create_refresh_token(db, user.id)
+    await db.commit()
 
     logger.info("Login successful user_id=%s", user.id)
     return {
@@ -142,17 +153,17 @@ def login_for_access_token(
 
 @router.post("/refresh", response_model=TokenRefresh)
 @limiter.limit("10/minute")
-def refresh_access_token(
+async def refresh_access_token(
     request: Request,
     body: RefreshRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Exchange a valid refresh token for a new access + refresh pair."""
     try:
-        old_record, new_refresh = validate_and_rotate(db, body.refresh_token)
+        old_record, new_refresh = await validate_and_rotate(db, body.refresh_token)
     except TokenReuseError as exc:
         # Commit the bulk-revocation before raising so the DB change is not rolled back.
-        db.commit()
+        await db.commit()
         logger.warning("Token reuse detected — user_id=%s, all sessions revoked", exc.user_id)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -165,7 +176,7 @@ def refresh_access_token(
         ) from exc
 
     access_token = create_access_token(subject=str(old_record.user_id))
-    db.commit()
+    await db.commit()
 
     return {
         "access_token": access_token,
@@ -175,24 +186,24 @@ def refresh_access_token(
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-def logout(
+async def logout(
     body: RefreshRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Revoke the provided refresh token (single-device logout)."""
-    revoke_token(db, body.refresh_token)
-    db.commit()
+    await revoke_token(db, body.refresh_token)
+    await db.commit()
     return None
 
 
 @router.post("/logout/all", status_code=status.HTTP_204_NO_CONTENT)
-def logout_all_sessions(
+async def logout_all_sessions(
     user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Revoke all refresh tokens for the authenticated user (all-device logout)."""
-    revoke_all_for_user(db, user.id)
-    db.commit()
+    await revoke_all_for_user(db, user.id)
+    await db.commit()
     return None
 
 
@@ -202,7 +213,7 @@ def logout_all_sessions(
 
 
 @router.get("/me", response_model=UserRead)
-def get_current_user_profile(
+async def get_current_user_profile(
     user: User = Depends(get_current_user),
 ):
     """Returns the authenticated user's profile."""

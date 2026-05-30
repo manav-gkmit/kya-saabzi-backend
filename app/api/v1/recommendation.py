@@ -1,11 +1,11 @@
-"""Recommendation HTTP endpoint — thin adapter over the engine service."""
+"""V1 recommendation route — deprecated, internally async."""
 
 import logging
 import uuid
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.db import get_db
 from app.schemas.recommendation import RecommendationRead
@@ -20,11 +20,11 @@ logger = logging.getLogger(__name__)
 
 @router.get("/", response_model=list[RecommendationRead])
 @limiter.limit("10/minute")
-def get_recommendation(
+async def get_recommendation(
     request: Request,
     meal_type: Literal["breakfast", "lunch", "dinner", "snack"] | None = None,
     household_id: uuid.UUID = Depends(get_current_household),
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
 ):
     """Return top-3 dish recommendations for the household."""
     resolved = meal_type or get_current_meal_type()
@@ -34,8 +34,8 @@ def get_recommendation(
         resolved,
     )
 
-    engine = HybridRecoEngine(db, household_id)
-    recos = engine.get_top_n(resolved)
+    engine = await HybridRecoEngine.create(db, household_id)
+    recos = await engine.get_top_n(resolved)
 
     if not recos:
         raise HTTPException(
