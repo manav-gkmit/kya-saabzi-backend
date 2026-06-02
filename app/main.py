@@ -70,11 +70,12 @@ _ERROR_STATUS_MAP = {
     ValidationError: status.HTTP_422_UNPROCESSABLE_ENTITY,
 }
 
+
 @app.exception_handler(AppError)
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     status_code = next(
         (code for exc_cls, code in _ERROR_STATUS_MAP.items() if isinstance(exc, exc_cls)),
-        status.HTTP_400_BAD_REQUEST
+        status.HTTP_400_BAD_REQUEST,
     )
 
     logger.warning("App error: %s", str(exc))

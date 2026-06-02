@@ -8,7 +8,12 @@ from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import InvalidCredentialsError, TokenExpiredError, TokenInvalidError, UserAlreadyExistsError
+from app.core.exceptions import (
+    InvalidCredentialsError,
+    TokenExpiredError,
+    TokenInvalidError,
+    UserAlreadyExistsError,
+)
 from app.database.db import get_db
 from app.models.households import Household
 from app.models.users import User

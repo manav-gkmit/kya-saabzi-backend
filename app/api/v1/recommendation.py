@@ -4,7 +4,7 @@ import logging
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import HouseholdNotFoundError, NotFoundError

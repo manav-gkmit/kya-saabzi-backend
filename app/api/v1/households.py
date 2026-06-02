@@ -6,7 +6,12 @@ from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.exceptions import HouseholdAccessDeniedError, HouseholdNotFoundError, UserNotFoundError, ValidationError
+from app.core.exceptions import (
+    HouseholdAccessDeniedError,
+    HouseholdNotFoundError,
+    UserNotFoundError,
+    ValidationError,
+)
 from app.database.db import get_db
 from app.models.households import Household
 from app.models.users import User

@@ -8,8 +8,8 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database.helpers import escape_like
 from app.core.exceptions import InvalidDishNameError
+from app.database.helpers import escape_like
 from app.models.dishes import Dish
 from app.services.dish.ingredients import attach_ingredients_to_dish
 from app.utils.time import get_current_meal_type

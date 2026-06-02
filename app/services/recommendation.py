@@ -27,6 +27,7 @@ class HybridRecoEngine:
         self._db = db
         self._household_id = household_id
         self._household = household
+
     @classmethod
     async def create(cls, db: AsyncSession, household_id: uuid.UUID) -> HybridRecoEngine:
         household = await db.get(Household, household_id)
