@@ -4,11 +4,12 @@ import logging
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from app.core.exceptions import CookLogNotFoundError, HouseholdAccessDeniedError
 from app.database.db import get_db
 from app.models.cooklogs import CookLog
 from app.models.users import User
@@ -65,10 +66,7 @@ async def delete_cooklog(
             cooklog_id,
             current_user.id,
         )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cook log entry not found.",
-        )
+        raise CookLogNotFoundError()
 
     if cooklog.user_id != current_user.id:
         logger.warning(
@@ -77,10 +75,7 @@ async def delete_cooklog(
             cooklog.user_id,
             current_user.id,
         )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not authorized to delete this cook log entry.",
-        )
+        raise HouseholdAccessDeniedError("Not authorized to delete this cook log entry.")
     now = datetime.now(UTC)
     cooklog.deleted_at = now
     await db.commit()

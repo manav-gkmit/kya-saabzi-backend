@@ -4,9 +4,10 @@ import logging
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import HouseholdNotFoundError, NotFoundError
 from app.database.db import get_db
 from app.schemas.recommendation import RecommendationRead
 from app.services.recommendation import HybridRecoEngine
@@ -37,16 +38,10 @@ async def get_recommendation(
     try:
         engine = await HybridRecoEngine.create(db, household_id)
         recos = await engine.get_top_n(resolved)
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(exc),
-        ) from exc
+    except HouseholdNotFoundError as exc:
+        raise exc
 
     if not recos:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No recommendations found. Try logging more cooks!",
-        )
+        raise NotFoundError("No recommendations found. Try logging more cooks!")
 
     return recos

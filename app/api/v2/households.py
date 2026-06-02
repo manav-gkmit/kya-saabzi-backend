@@ -2,10 +2,11 @@
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, Query, Request, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import HouseholdAccessDeniedError, HouseholdNotFoundError, UserNotFoundError, ValidationError
 from app.database.db import get_db
 from app.models.households import Household
 from app.models.users import User
@@ -31,7 +32,7 @@ async def get_my_household(
     """Fetch preferences and data for the user's current household."""
     household = await db.get(Household, household_id)
     if not household:
-        raise HTTPException(status_code=404, detail="Household not found")
+        raise HouseholdNotFoundError()
     return household
 
 
@@ -44,13 +45,10 @@ async def update_my_household(
     """Update household name and/or preferences (admin only)."""
     household = await db.get(Household, user.household_id)
     if not household:
-        raise HTTPException(status_code=404, detail="Household not found")
+        raise HouseholdNotFoundError()
 
     if household.admin_id and household.admin_id != user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only the household admin can update these settings.",
-        )
+        raise HouseholdAccessDeniedError("Only the household admin can update these settings.")
 
     prefs = (
         update_data.preferences.model_dump(exclude_unset=True) if update_data.preferences else None
@@ -90,10 +88,7 @@ async def join_household(
     target = result.scalars().first()
 
     if not target:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Household with this invite code not found.",
-        )
+        raise HouseholdNotFoundError("Household with this invite code not found.")
     if user.household_id == target.id:
         return target
 
@@ -146,24 +141,20 @@ async def remove_household_member(
     """Remove a member from the household (admin only)."""
     household = await db.get(Household, user.household_id)
     if not household:
-        raise HTTPException(status_code=404, detail="Household not found")
+        raise HouseholdNotFoundError()
 
     if household.admin_id != user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Only the admin can remove members."
-        )
+        raise HouseholdAccessDeniedError("Only the admin can remove members.")
 
     if member_id == user.id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Use the /leave endpoint instead."
-        )
+        raise ValidationError("Use the /leave endpoint instead.")
 
     stmt = select(User).where(User.id == member_id, User.household_id == household.id)
     result = await db.execute(stmt)
     member = result.scalars().first()
 
     if not member:
-        raise HTTPException(status_code=404, detail="Member not found in your household")
+        raise UserNotFoundError("Member not found in your household")
 
     await create_private_household(db, member)
     await db.commit()
