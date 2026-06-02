@@ -19,6 +19,7 @@ dependencies = [
     "pydantic>=2.9.0",
     "pydantic-settings==2.2.1",
     "PyJWT==2.12.1",
+    "pytest>=8.2.0",
     "python-dotenv==1.0.1",
     "slowapi==0.1.9",
     "SQLAlchemy==2.0.44",
