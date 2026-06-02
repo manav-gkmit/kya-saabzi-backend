@@ -8,6 +8,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import InvalidDishNameError
 from app.database.helpers import escape_like
 from app.models.dishes import Dish
 from app.services.dish.ingredients import attach_ingredients_to_dish
@@ -122,7 +123,7 @@ async def find_or_create_dish(
 ) -> Dish:
     input_name = name.lower().strip()
     if not input_name:
-        raise ValueError("Dish name cannot be empty after normalization")
+        raise InvalidDishNameError("Dish name cannot be empty after normalization")
 
     dish = await get_exact_dish(db, input_name, household_id)
     if dish:

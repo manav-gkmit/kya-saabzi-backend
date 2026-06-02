@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import HouseholdNotFoundError
 from app.models.cooklogs import CookLog
 from app.models.dishes import Dish, Ingredient
 from app.models.households import Household
@@ -31,7 +32,7 @@ class HybridRecoEngine:
     async def create(cls, db: AsyncSession, household_id: uuid.UUID) -> HybridRecoEngine:
         household = await db.get(Household, household_id)
         if household is None:
-            raise ValueError(f"Household with ID {household_id} not found")
+            raise HouseholdNotFoundError(f"Household with ID {household_id} not found")
         return cls(db, household_id, household)
 
     async def get_top_n(self, meal_type: str, *, count: int = 3) -> list[RecommendationRead]:

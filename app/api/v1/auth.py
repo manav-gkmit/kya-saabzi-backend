@@ -4,10 +4,16 @@ import hashlib
 import logging
 from typing import NoReturn
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import (
+    InvalidCredentialsError,
+    TokenExpiredError,
+    TokenInvalidError,
+    UserAlreadyExistsError,
+)
 from app.database.db import get_db
 from app.models.households import Household
 from app.models.users import User
@@ -40,7 +46,7 @@ def _fingerprint_identifier(value: str) -> str:
 
 def _throw_conflict(detail: str, fingerprint: str) -> NoReturn:
     logger.warning("Registration blocked: %s for identifier=%s", detail, fingerprint)
-    raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detail)
+    raise UserAlreadyExistsError(detail)
 
 
 # ---------------------------------------------------------------------------
@@ -74,10 +80,7 @@ async def register_user(
         result = await db.execute(select(Household).where(Household.invite_code == invite_code))
         household = result.scalars().first()
         if not household:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Invalid invite code provided.",
-            )
+            raise InvalidCredentialsError()
         is_new_household = False
     else:
         household_name = user_data.household_name or f"{user_data.username}'s Home"
@@ -131,10 +134,7 @@ async def login_for_access_token(
 
     if not user or not verify_password(user_data.password, user.hashed_password):  # type: ignore[arg-type]
         logger.warning("Login failed identifier=%s", email_fp)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials provided.",
-        )
+        raise InvalidCredentialsError()
 
     access_token = create_access_token(subject=str(user.id))
     refresh_token = await create_refresh_token(db, user.id)
@@ -163,15 +163,9 @@ async def refresh_access_token(
         # Commit the bulk-revocation before raising so the DB change is not rolled back.
         await db.commit()
         logger.warning("Token reuse detected — user_id=%s, all sessions revoked", exc.user_id)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(exc),
-        ) from exc
-    except ValueError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=str(exc),
-        ) from exc
+        raise exc
+    except (TokenInvalidError, TokenExpiredError) as exc:
+        raise exc
 
     access_token = create_access_token(subject=str(old_record.user_id))
     await db.commit()

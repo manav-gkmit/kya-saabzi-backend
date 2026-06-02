@@ -16,6 +16,14 @@ from starlette.responses import Response
 from app.api.v1.api import api_router
 from app.api.v2.api import api_v2_router
 from app.config import settings
+from app.core.exceptions import (
+    AppError,
+    AuthError,
+    ConflictError,
+    ForbiddenError,
+    NotFoundError,
+    ValidationError,
+)
 from app.utils.api_migration import add_v1_migration_headers, migration_exposed_headers
 from app.utils.logging_config import configure_logging
 from app.utils.rate_limit import limiter
@@ -51,6 +59,38 @@ async def validation_exception_handler(
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
         content={"detail": exc.errors()},
+    )
+
+
+_ERROR_STATUS_MAP = {
+    AuthError: status.HTTP_401_UNAUTHORIZED,
+    ForbiddenError: status.HTTP_403_FORBIDDEN,
+    NotFoundError: status.HTTP_404_NOT_FOUND,
+    ConflictError: status.HTTP_409_CONFLICT,
+    ValidationError: status.HTTP_422_UNPROCESSABLE_ENTITY,
+}
+
+
+@app.exception_handler(AppError)
+async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
+    status_code = next(
+        (code for exc_cls, code in _ERROR_STATUS_MAP.items() if isinstance(exc, exc_cls)),
+        status.HTTP_400_BAD_REQUEST,
+    )
+
+    logger.warning("App error: %s", str(exc))
+    return JSONResponse(
+        status_code=status_code,
+        content={"detail": str(exc)},
+    )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    logger.exception("Unhandled exception")
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"detail": "Internal server error"},
     )
 
 

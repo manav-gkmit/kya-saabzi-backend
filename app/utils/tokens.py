@@ -13,6 +13,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.core.exceptions import TokenExpiredError, TokenInvalidError, TokenReuseError
 from app.models.refresh_tokens import RefreshToken
 
 ALGORITHM = settings.ALGORITHM
@@ -20,18 +21,6 @@ SECRET_KEY = settings.SECRET_KEY
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
 logger = logging.getLogger(__name__)
-
-
-class TokenReuseError(Exception):
-    """Raised when a revoked refresh token is presented (possible theft).
-
-    The caller **must** commit the database session before returning a response
-    so that the bulk-revocation of all user sessions is persisted.
-    """
-
-    def __init__(self, user_id: UUID) -> None:
-        self.user_id = user_id
-        super().__init__("Token reuse detected. All sessions revoked.")
 
 
 def create_access_token(
@@ -101,7 +90,8 @@ async def validate_and_rotate(db: AsyncSession, raw_token: str) -> tuple[Refresh
         Tuple of (old RefreshToken record, new raw token string).
 
     Raises:
-        ValueError: If the token is invalid or expired.
+        TokenInvalidError: If the token is invalid.
+        TokenExpiredError: If the token is expired.
         TokenReuseError: If a revoked token is presented. Before raising, this
             function bulk-revokes all active refresh tokens for the user as a
             safety measure. The caller must commit the session after catching
@@ -115,7 +105,7 @@ async def validate_and_rotate(db: AsyncSession, raw_token: str) -> tuple[Refresh
     record = result.scalars().first()
 
     if not record:
-        raise ValueError("Refresh token not found.")
+        raise TokenInvalidError("Refresh token not found.")
 
     if record.is_revoked:
         # Token reuse detected — revoke every token for this user as a safety measure.
@@ -123,7 +113,7 @@ async def validate_and_rotate(db: AsyncSession, raw_token: str) -> tuple[Refresh
         raise TokenReuseError(record.user_id)
 
     if record.is_expired:
-        raise ValueError("Refresh token has expired. Please log in again.")
+        raise TokenExpiredError()
 
     # Rotate: revoke the old token, issue a fresh one
     record.revoked_at = datetime.now(UTC)

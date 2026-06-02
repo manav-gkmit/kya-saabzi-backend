@@ -4,9 +4,10 @@ import logging
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import HouseholdNotFoundError, NotFoundError
 from app.database.db import get_db
 from app.schemas.recommendation import RecommendationRead
 from app.services.recommendation import HybridRecoEngine
@@ -28,19 +29,19 @@ async def get_recommendation(
 ):
     """Return top-3 dish recommendations for the household."""
     resolved = meal_type or get_current_meal_type()
-    logger.info(
-        "Generating reco for household_id=%s meal_type=%s",
-        household_id,
-        resolved,
-    )
+    try:
+        logger.info(
+            "Generating reco for household_id=%s meal_type=%s",
+            household_id,
+            resolved,
+        )
 
-    engine = await HybridRecoEngine.create(db, household_id)
-    recos = await engine.get_top_n(resolved)
+        engine = await HybridRecoEngine.create(db, household_id)
+        recos = await engine.get_top_n(resolved)
+    except HouseholdNotFoundError as exc:
+        raise exc
 
     if not recos:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="No recommendations found. Try logging more cooks!",
-        )
+        raise NotFoundError("No recommendations found. Try logging more cooks!")
 
     return recos
