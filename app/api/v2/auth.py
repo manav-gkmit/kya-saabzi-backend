@@ -10,6 +10,7 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import (
+    HouseholdNotFoundError,
     InvalidCredentialsError,
     TokenExpiredError,
     TokenInvalidError,
@@ -91,7 +92,7 @@ async def register_user(
             .first()
         )
         if not household:
-            raise InvalidCredentialsError()
+            raise HouseholdNotFoundError(f"Household with invite code '{code}' not found")
         is_new = False
     else:
         name = user_data.household_name or f"{user_data.username}'s Home"

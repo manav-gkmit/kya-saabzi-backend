@@ -13,7 +13,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.exceptions import (
     HouseholdAccessDeniedError,
     TokenInvalidError,
-    UserNotFoundError,
 )
 from app.database.db import get_db
 from app.models.users import User
@@ -31,7 +30,7 @@ async def get_current_user(
     Raises:
         TokenInvalidError: If credentials are missing, invalid, or the
             corresponding user no longer exists.
-        UserNotFoundError: If the user no longer exists.
+        TokenInvalidError: If the user no longer exists.
     """
     if not creds or creds.scheme.lower() != "bearer":
         raise TokenInvalidError("Not authenticated")
@@ -54,7 +53,7 @@ async def get_current_user(
     result = await db.execute(stmt)
     user = result.scalars().first()
     if not user:
-        raise UserNotFoundError()
+        raise TokenInvalidError("User not found")
     return user
 
 
