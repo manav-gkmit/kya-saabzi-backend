@@ -35,6 +35,6 @@ async def search_dishes(
     scored = []
     for d in dishes:
         ratio = SequenceMatcher(None, query, d.name.lower()).ratio()
-        scored.append({"dish": d, "score": round(ratio, 3)})
-    scored.sort(key=lambda x: x["score"], reverse=True)
+        scored.append({"id": d.id, "name": d.name, "similarity": round(ratio, 3)})
+    scored.sort(key=lambda x: x["similarity"], reverse=True)
     return scored

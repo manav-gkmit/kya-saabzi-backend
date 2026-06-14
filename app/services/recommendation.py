@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.exceptions import HouseholdNotFoundError
 from app.models.cooklogs import CookLog
@@ -71,16 +72,21 @@ class HybridRecoEngine:
                 seen[normalized] = dish
         return list(seen.values())
 
+    @staticmethod
+    def _safe_window(prefs: dict) -> int:
+        """Parse recommendation_window_days from preferences, with safe defaults."""
+        raw = prefs.get("recommendation_window_days", _DEFAULT_WINDOW_DAYS)
+        try:
+            return max(0, int(raw))
+        except (ValueError, TypeError):
+            return _DEFAULT_WINDOW_DAYS
+
     async def _apply_cooldown(self, candidates: list[Dish]) -> list[Dish]:
         prefs = self._household.preferences or {}
         if prefs.get("include_recently_cooked", False):
             return candidates
 
-        raw_win = prefs.get("recommendation_window_days", _DEFAULT_WINDOW_DAYS)
-        try:
-            window = max(0, int(raw_win))
-        except (ValueError, TypeError):
-            window = _DEFAULT_WINDOW_DAYS
+        window = self._safe_window(prefs)
 
         threshold = datetime.now(UTC) - timedelta(days=window)
         stmt = select(CookLog.dish_id).where(
@@ -149,6 +155,9 @@ class HybridRecoEngine:
     ) -> list[RecommendationRead]:
         results: list[RecommendationRead] = []
         for dish, breakdown in scored:
+            # Eagerly load ingredients to avoid MissingGreenlet during serialization
+            await self._db.refresh(dish, attribute_names=["ingredients"])
+
             stmt = (
                 select(CookLog.note)
                 .where(

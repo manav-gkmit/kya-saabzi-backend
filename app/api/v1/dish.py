@@ -4,6 +4,7 @@ import logging
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.database.db import get_db
 from app.models.users import User
@@ -73,7 +74,7 @@ async def create_dish(
     )
 
     await db.commit()
-    await db.refresh(dish)
+    await db.refresh(dish, attribute_names=["ingredients"])
 
     if not (dish.ingredients and dish.calories_estimate and dish.prep_time_minutes):
         background_tasks.add_task(enrich_dish_background_task, dish.id)
