@@ -4,7 +4,6 @@ import logging
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
 
 from app.database.db import get_db
 from app.models.users import User

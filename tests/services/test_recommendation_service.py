@@ -9,11 +9,11 @@ from unittest.mock import patch
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.exceptions import HouseholdNotFoundError
 from app.models.cooklogs import CookLog
 from app.models.dishes import Dish
 from app.models.households import Household
 from app.models.users import User
-from app.core.exceptions import HouseholdNotFoundError
 from app.services.recommendation import _DEFAULT_WINDOW_DAYS, HybridRecoEngine
 
 pytestmark = pytest.mark.asyncio
