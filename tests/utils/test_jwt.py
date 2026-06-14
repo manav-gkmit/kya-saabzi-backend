@@ -9,7 +9,7 @@ import jwt as pyjwt
 import pytest
 
 from app.config import settings
-from app.utils.jwt import create_access_token, decode_access_token
+from app.utils.tokens import create_access_token, decode_access_token
 
 
 class TestCreateAccessToken:

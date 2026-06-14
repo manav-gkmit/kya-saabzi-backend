@@ -13,6 +13,7 @@ from app.models.cooklogs import CookLog
 from app.models.dishes import Dish
 from app.models.households import Household
 from app.models.users import User
+from app.core.exceptions import HouseholdNotFoundError
 from app.services.recommendation import _DEFAULT_WINDOW_DAYS, HybridRecoEngine
 
 pytestmark = pytest.mark.asyncio
@@ -74,7 +75,7 @@ class TestHybridRecoEngineInit:
     """Verify engine initialization."""
 
     async def test_invalid_household_raises(self, async_db_session: AsyncSession) -> None:
-        with pytest.raises(ValueError, match="not found"):
+        with pytest.raises(HouseholdNotFoundError):
             await HybridRecoEngine.create(async_db_session, uuid.uuid4())
 
     async def test_valid_household_initialises(

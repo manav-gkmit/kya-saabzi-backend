@@ -293,7 +293,7 @@ class TestRemoveMember:
             f"{MEMBERS_URL}/{async_test_user.id}",
             headers=async_auth_headers,
         )
-        assert resp.status_code == 400
+        assert resp.status_code == 422
 
     async def test_remove_nonexistent_returns_404(
         self,

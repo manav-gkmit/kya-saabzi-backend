@@ -16,7 +16,7 @@ from app.models.users import User
 
 pytestmark = pytest.mark.asyncio
 
-BASE_URL = "/api/v1/cooklogs"
+BASE_URL = "/api/v1/cooklogs/"
 
 
 # ---------------------------------------------------------------------------
