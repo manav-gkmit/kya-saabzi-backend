@@ -147,7 +147,7 @@ class TestDeleteCooklog:
     ) -> None:
         log = await _seed_log(async_db_session, async_test_user, async_test_household)
         log_id = log.id
-        resp = await async_client.delete(f"{BASE_URL}/{log_id}", headers=async_auth_headers)
+        resp = await async_client.delete(f"{BASE_URL}{log_id}", headers=async_auth_headers)
         assert resp.status_code == 204
 
         async_db_session.expire_all()
@@ -174,7 +174,7 @@ class TestDeleteCooklog:
         await async_db_session.refresh(other_user)
 
         log = await _seed_log(async_db_session, other_user, async_test_household, "Foreign Dish")
-        resp = await async_client.delete(f"{BASE_URL}/{log.id}", headers=async_auth_headers)
+        resp = await async_client.delete(f"{BASE_URL}{log.id}", headers=async_auth_headers)
         assert resp.status_code == 403
 
     async def test_not_found(
@@ -183,7 +183,7 @@ class TestDeleteCooklog:
         async_auth_headers: dict,
     ) -> None:
         fake_id = uuid.uuid4()
-        resp = await async_client.delete(f"{BASE_URL}/{fake_id}", headers=async_auth_headers)
+        resp = await async_client.delete(f"{BASE_URL}{fake_id}", headers=async_auth_headers)
         assert resp.status_code == 404
 
     async def test_already_deleted_returns_404(
@@ -200,5 +200,5 @@ class TestDeleteCooklog:
         log.deleted_at = datetime.now(UTC)
         await async_db_session.commit()
 
-        resp = await async_client.delete(f"{BASE_URL}/{log.id}", headers=async_auth_headers)
+        resp = await async_client.delete(f"{BASE_URL}{log.id}", headers=async_auth_headers)
         assert resp.status_code == 404
