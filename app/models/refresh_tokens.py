@@ -34,7 +34,10 @@ class RefreshToken(BaseModel):
 
     @property
     def is_expired(self) -> bool:
-        return datetime.now(UTC) > self.expires_at
+        expires = self.expires_at
+        if expires is not None and expires.tzinfo is None:
+            expires = expires.replace(tzinfo=UTC)
+        return datetime.now(UTC) > expires
 
     @property
     def is_revoked(self) -> bool:
